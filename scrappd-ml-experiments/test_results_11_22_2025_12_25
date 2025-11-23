@@ -1,0 +1,20 @@
+# ML Model Test Results
+
+## Model: rembg (default u2net)
+Date: [today's date]
+
+### Test Set 1: Clean edges
+- Items: [list what you tested]
+- Results: ✅ Clean removal, good edges
+- Speed: X seconds average
+
+### Test Set 2: Difficult cases
+- Crumpled receipt: [✅ Good / ⚠️ Okay / ❌ Failed] - Notes: ...
+- Torn ticket: [✅ Good / ⚠️ Okay / ❌ Failed] - Notes: ...
+- Textured packaging: [✅ Good / ⚠️ Okay / ❌ Failed] - Notes: ...
+[etc.]
+
+### Overall Assessment:
+- Pass rate: X/Y items acceptable
+- Speed: Average X seconds
+- Decision: [Move forward / Try other models / Needs fine-tuning]
