@@ -1,0 +1,32 @@
+# Technical Decisions
+
+## ML Model Selection (Nov 2024)
+
+**Decision:** Use BiRefNet for all users
+
+**Context:**
+
+- Tested U2Net (2s) vs BiRefNet (14s)
+- BiRefNet significantly better at:
+  - Removing hands/fingers from shots
+  - Cleaner edges
+  - Better object detection
+- U2Net left artifacts and hands in cutouts
+
+**Trade-offs:**
+
+- Slower processing (14s vs 2s)
+- Mitigated with: Background processing, progress UX, "AI magic" messaging
+- Future optimization: GPU will reduce to ~3-5s
+
+**Business rationale:**
+
+- Quality as baseline competitive advantage vs Canva
+- Volume-based freemium (not quality tiers)
+- Better App Store reviews with consistent quality
+
+**Future considerations:**
+
+- Add GPU processing when revenue supports it (~$200-500/month)
+- Consider U2Net for instant preview + BiRefNet for final
+- Monitor user feedback on processing time
