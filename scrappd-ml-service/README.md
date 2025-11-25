@@ -2,6 +2,36 @@
 
 Background removal service using BiRefNet model.
 
+## Quick Start with Makefile
+```bash
+# Setup (first time only)
+make setup
+source venv/bin/activate
+make install
+
+# Development
+make dev          # Run with auto-reload
+make test         # Test the service
+make test-image IMG=path/to/image.jpg  # Test with specific image
+
+# Docker
+make docker-build    # Build image
+make docker-run      # Run container
+make docker-logs     # View logs
+make docker-test     # Test Dockerized service
+make docker-stop     # Stop container
+
+# Cleanup
+make clean          # Clean generated files
+make clean-all      # Clean everything including venv
+```
+
+## Common Commands
+```bash
+make help           # Show all available commands
+make info           # Show service information
+```
+
 ## Setup
 ```bash
 python -m venv venv

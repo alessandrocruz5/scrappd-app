@@ -134,7 +134,13 @@ func (c *mlClient) doRemoveBackground(ctx context.Context, req models.RemoveBack
 
 	var response models.RemoveBackgroundResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, utils.ErrMLService("Failed to decode response", err)
+		// Treat JSON decode errors as client errors (don't retry)
+		return nil, utils.NewAppError(
+			utils.ErrCodeMLServiceError,
+			"Failed to decode response",
+			http.StatusBadRequest, // Changed from 500 to 400 to prevent retries
+			err,
+		)
 	}
 
 	return &response, nil
