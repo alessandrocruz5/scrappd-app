@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"../../utils"
-	"../config"
-	"../models"
+	"github.com/alessandrocruz5/scrappd-app/backend/internal/config"
+	"github.com/alessandrocruz5/scrappd-app/backend/internal/models"
+	"github.com/alessandrocruz5/scrappd-app/backend/pkg/utils"
 )
 
 // MLClient is the interface for the ML service client
