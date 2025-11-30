@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/api"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/config"
@@ -51,8 +52,9 @@ func main() {
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
 		Handler:      router,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
+		ReadTimeout:  120 * time.Second, // Allow time for large uploads
+		WriteTimeout: 120 * time.Second, // Allow time for ML processing + response
+		IdleTimeout:  240 * time.Second,
 	}
 
 	// Start server in a goroutine

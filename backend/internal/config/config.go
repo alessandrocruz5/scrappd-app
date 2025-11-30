@@ -18,11 +18,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port            string
-	Environment     string
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	ShutdownTimeout time.Duration
+	Port            string        `mapstructure:"port"`
+	Environment     string        `mapstructure:"environment"`
+	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
 }
 
 type DatabaseConfig struct {
