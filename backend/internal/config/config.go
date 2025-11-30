@@ -18,6 +18,7 @@ type Config struct {
 }
 
 type ServerConfig struct {
+	Host            string        `mapstructure:"host"`
 	Port            string        `mapstructure:"port"`
 	Environment     string        `mapstructure:"environment"`
 	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
@@ -64,6 +65,7 @@ func Load() (*Config, error) {
 
 	config := &Config{
 		Server: ServerConfig{
+			Host:            getEnv("SERVER_HOST", "0.0.0.0"),
 			Port:            getEnv("SERVER_PORT", "8080"),
 			Environment:     getEnv("ENVIRONMENT", "development"),
 			ReadTimeout:     getDurationEnv("SERVER_READ_TIMEOUT", 10*time.Second),

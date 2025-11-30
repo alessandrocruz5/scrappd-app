@@ -1,0 +1,147 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../data/services/api_service.dart';
+
+enum ProcessingState {
+  idle,
+  picking,
+  uploading,
+  processing,
+  success,
+  error,
+}
+
+class ImageProcessingProvider extends ChangeNotifier {
+  final ApiService _apiService;
+  final ImagePicker _imagePicker = ImagePicker();
+
+  ProcessingState _state = ProcessingState.idle;
+  File? _originalImage;
+  File? _processedImage;
+  String? _errorMessage;
+  double _progress = 0.0;
+
+  ImageProcessingProvider(this._apiService);
+
+  // Getters
+  ProcessingState get state => _state;
+  File? get originalImage => _originalImage;
+  File? get processedImage => _processedImage;
+  String? get errorMessage => _errorMessage;
+  double get progress => _progress;
+  bool get isProcessing => _state == ProcessingState.processing || 
+                           _state == ProcessingState.uploading;
+
+  /// Pick image from camera
+  Future<void> pickFromCamera() async {
+    try {
+      _setState(ProcessingState.picking);
+      
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        _originalImage = File(image.path);
+        await _processImage();
+      } else {
+        _setState(ProcessingState.idle);
+      }
+    } catch (e) {
+      _setError('Failed to capture image: $e');
+    }
+  }
+
+  /// Pick image from gallery
+  Future<void> pickFromGallery() async {
+    try {
+      _setState(ProcessingState.picking);
+      
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        _originalImage = File(image.path);
+        await _processImage();
+      } else {
+        _setState(ProcessingState.idle);
+      }
+    } catch (e) {
+      _setError('Failed to pick image: $e');
+    }
+  }
+
+  /// Process the selected image
+  Future<void> _processImage() async {
+    if (_originalImage == null) return;
+
+    try {
+      _setState(ProcessingState.uploading);
+      _updateProgress(0.3);
+
+      _setState(ProcessingState.processing);
+      _updateProgress(0.5);
+
+      // Call API to remove background
+      final processedFile = await _apiService.removeBackground(_originalImage!);
+      
+      _processedImage = processedFile;
+      _updateProgress(1.0);
+      _setState(ProcessingState.success);
+
+    } catch (e) {
+      _setError('Processing failed: $e');
+    }
+  }
+
+  /// Retry processing
+  Future<void> retry() async {
+    if (_originalImage != null) {
+      _clearError();
+      await _processImage();
+    }
+  }
+
+  /// Reset state
+  void reset() {
+    _originalImage = null;
+    _processedImage = null;
+    _errorMessage = null;
+    _progress = 0.0;
+    _setState(ProcessingState.idle);
+  }
+
+  /// Clear error
+  void _clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Set error state
+  void _setError(String message) {
+    _errorMessage = message;
+    _setState(ProcessingState.error);
+  }
+
+  /// Update processing state
+  void _setState(ProcessingState newState) {
+    _state = newState;
+    notifyListeners();
+  }
+
+  /// Update progress
+  void _updateProgress(double value) {
+    _progress = value;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _apiService.cancelRequests();
+    super.dispose();
+  }
+}

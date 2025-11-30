@@ -50,7 +50,7 @@ func main() {
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
+		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
 		Handler:      router,
 		ReadTimeout:  120 * time.Second, // Allow time for large uploads
 		WriteTimeout: 120 * time.Second, // Allow time for ML processing + response
