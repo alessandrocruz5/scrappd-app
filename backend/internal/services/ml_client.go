@@ -3,10 +3,13 @@ package services
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"time"
 
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/config"
@@ -46,11 +49,6 @@ func (c *mlClient) RemoveBackground(ctx context.Context, imageData string, forma
 		return nil, utils.ErrBadRequest("Image data is required", nil)
 	}
 
-	req := models.RemoveBackgroundRequest{
-		ImageData: imageData,
-		Format:    format,
-	}
-
 	var lastErr error
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		if attempt > 0 {
@@ -62,7 +60,7 @@ func (c *mlClient) RemoveBackground(ctx context.Context, imageData string, forma
 			}
 		}
 
-		response, err := c.doRemoveBackground(ctx, req)
+		response, err := c.doRemoveBackground(ctx, imageData, format)
 		if err == nil {
 			return response, nil
 		}
@@ -84,39 +82,81 @@ func (c *mlClient) RemoveBackground(ctx context.Context, imageData string, forma
 }
 
 // doRemoveBackground performs the actual HTTP request
-func (c *mlClient) doRemoveBackground(ctx context.Context, req models.RemoveBackgroundRequest) (*models.RemoveBackgroundResponse, error) {
-	jsonData, err := json.Marshal(req)
+func (c *mlClient) doRemoveBackground(ctx context.Context, imageData string, format string) (*models.RemoveBackgroundResponse, error) {
+	// Decode base64 image to bytes
+	imageBytes, err := base64.StdEncoding.DecodeString(imageData)
 	if err != nil {
-		return nil, utils.ErrBadRequest("Failed to encode request", err)
+		return nil, utils.ErrBadRequest("Failed to decode base64 image", err)
 	}
 
+	// Detect content type
+	contentType := http.DetectContentType(imageBytes)
+
+	// Determine filename extension and ensure valid MIME type
+	var filename string
+	switch contentType {
+	case "image/jpeg":
+		filename = "image.jpg"
+		contentType = "image/jpeg"
+	case "image/png":
+		filename = "image.png"
+		contentType = "image/png"
+	case "image/webp":
+		filename = "image.webp"
+		contentType = "image/webp"
+	default:
+		// Default to JPEG for unknown types
+		filename = "image.jpg"
+		contentType = "image/jpeg"
+	}
+
+	// Create multipart form-data
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Create form file part with proper content type
+	partHeader := make(textproto.MIMEHeader)
+	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
+	partHeader.Set("Content-Type", contentType)
+
+	part, err := writer.CreatePart(partHeader)
+	if err != nil {
+		return nil, utils.ErrInternalServer("Failed to create form file", err)
+	}
+
+	if _, err := part.Write(imageBytes); err != nil {
+		return nil, utils.ErrInternalServer("Failed to write image data", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, utils.ErrInternalServer("Failed to close multipart writer", err)
+	}
+
+	// Create HTTP request
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		fmt.Sprintf("%s/api/v1/remove-background", c.baseURL),
-		bytes.NewBuffer(jsonData),
+		fmt.Sprintf("%s/process", c.baseURL),
+		body,
 	)
 	if err != nil {
 		return nil, utils.ErrInternalServer("Failed to create request", err)
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
 
+	// Send request
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, utils.ErrServiceUnavailable("ML", err)
 	}
 	defer httpResp.Body.Close()
 
-	body, err := io.ReadAll(httpResp.Body)
-	if err != nil {
-		return nil, utils.ErrMLService("Failed to read response", err)
-	}
-
 	// Handle non-2xx status codes
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
+		bodyBytes, _ := io.ReadAll(httpResp.Body)
 		var errResp models.ErrorResponse
-		if err := json.Unmarshal(body, &errResp); err == nil && errResp.Detail != "" {
+		if err := json.Unmarshal(bodyBytes, &errResp); err == nil && errResp.Detail != "" {
 			return nil, utils.NewAppError(
 				utils.ErrCodeMLServiceError,
 				errResp.Detail,
@@ -126,24 +166,36 @@ func (c *mlClient) doRemoveBackground(ctx context.Context, req models.RemoveBack
 		}
 		return nil, utils.NewAppError(
 			utils.ErrCodeMLServiceError,
-			fmt.Sprintf("ML service returned status %d", httpResp.StatusCode),
+			string(bodyBytes),
 			httpResp.StatusCode,
 			nil,
 		)
 	}
 
-	var response models.RemoveBackgroundResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		// Treat JSON decode errors as client errors (don't retry)
-		return nil, utils.NewAppError(
-			utils.ErrCodeMLServiceError,
-			"Failed to decode response",
-			http.StatusBadRequest, // Changed from 500 to 400 to prevent retries
-			err,
-		)
+	// Read the PNG image bytes from response
+	processedImageBytes, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		return nil, utils.ErrMLService("Failed to read response", err)
 	}
 
-	return &response, nil
+	// Convert to base64 for our API response
+	processedImageBase64 := base64.StdEncoding.EncodeToString(processedImageBytes)
+
+	// Get processing time from header if available
+	processingTime := 0.0
+	if timeStr := httpResp.Header.Get("X-Processing-Time"); timeStr != "" {
+		fmt.Sscanf(timeStr, "%f", &processingTime)
+	}
+
+	return &models.RemoveBackgroundResponse{
+		ProcessedImage: processedImageBase64,
+		Metadata: models.BackgroundRemovalMeta{
+			ProcessingTime: processingTime,
+			Model:          "birefnet-general",
+			OriginalSize:   models.Size{Width: 0, Height: 0},
+			ProcessedSize:  models.Size{Width: 0, Height: 0},
+		},
+	}, nil
 }
 
 // HealthCheck checks if the ML service is healthy

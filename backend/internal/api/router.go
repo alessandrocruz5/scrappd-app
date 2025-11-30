@@ -10,9 +10,6 @@ import (
 
 // SetupRouter configures and returns the Gin router
 func SetupRouter(mlClient services.MLClient, logger *logrus.Logger) *gin.Engine {
-	// Set Gin mode based on environment
-	// gin.SetMode(gin.ReleaseMode) // Set this in production
-
 	router := gin.New()
 
 	// Add middleware
@@ -24,22 +21,34 @@ func SetupRouter(mlClient services.MLClient, logger *logrus.Logger) *gin.Engine 
 	healthHandler := handlers.NewHealthHandler(mlClient)
 	mlHandler := handlers.NewMLHandler(mlClient)
 
-	// Health check endpoints
-	healthGroup := router.Group("/health")
-	{
-		healthGroup.GET("", healthHandler.BasicHealth)
-		healthGroup.GET("/deep", healthHandler.DeepHealth)
-		healthGroup.GET("/ready", healthHandler.ReadinessProbe)
-		healthGroup.GET("/live", healthHandler.LivenessProbe)
-	}
+	// Root level health checks
+	router.GET("/health", healthHandler.BasicHealth)
+	router.GET("/health/deep", healthHandler.DeepHealth)
+	router.GET("/health/ready", healthHandler.ReadinessProbe)
+	router.GET("/health/live", healthHandler.LivenessProbe)
+	router.GET("/readyz", healthHandler.ReadinessProbe)
+	router.GET("/healthz", healthHandler.LivenessProbe)
 
-	// API v1 endpoints
-	v1 := router.Group("/api/v1")
-	{
-		// ML endpoints
-		v1.POST("/remove-background", mlHandler.RemoveBackground)
-		v1.POST("/remove-background/upload", mlHandler.RemoveBackgroundFromFile)
-	}
+	// ML endpoints - register directly
+	router.POST("/api/v1/ml/process", mlHandler.RemoveBackgroundFromFile)
+	router.POST("/api/v1/remove-background", mlHandler.RemoveBackground)
+	router.POST("/api/v1/remove-background/upload", mlHandler.RemoveBackgroundFromFile)
+
+	// Debug route
+	router.GET("/debug/routes", func(c *gin.Context) {
+		routes := router.Routes()
+		routeList := make([]map[string]string, 0)
+		for _, route := range routes {
+			routeList = append(routeList, map[string]string{
+				"method": route.Method,
+				"path":   route.Path,
+			})
+		}
+		c.JSON(200, gin.H{
+			"total":  len(routes),
+			"routes": routeList,
+		})
+	})
 
 	return router
 }

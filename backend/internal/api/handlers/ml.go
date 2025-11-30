@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/services"
 	"github.com/alessandrocruz5/scrappd-app/backend/pkg/utils"
+	"github.com/gin-gonic/gin"
 )
 
 // MLHandler handles ML-related endpoints
@@ -162,29 +163,17 @@ func (h *MLHandler) RemoveBackgroundFromFile(c *gin.Context) {
 		return
 	}
 
-	// Get original format from content type
-	originalFormat := ""
-	if ext, ok := utils.ImageExtensions[fileHeader.Header.Get("Content-Type")]; ok {
-		originalFormat = ext
+	// ❌ DON'T DO THIS (returns JSON):
+	// utils.RespondSuccess(c, http.StatusOK, mlResponse)
+
+	// ✅ DO THIS (returns PNG binary):
+	// Decode base64 response back to bytes
+	imageBytes, err := base64.StdEncoding.DecodeString(mlResponse.ProcessedImage)
+	if err != nil {
+		utils.RespondError(c, utils.ErrInternalServer("Failed to decode processed image", err))
+		return
 	}
 
-	// Build response
-	response := RemoveBackgroundResponse{
-		ProcessedImage: mlResponse.ProcessedImage,
-		OriginalFormat: originalFormat,
-		Metadata: RemovalMetadata{
-			ProcessingTime: mlResponse.Metadata.ProcessingTime,
-			Model:          mlResponse.Metadata.Model,
-			OriginalSize: ImageSize{
-				Width:  mlResponse.Metadata.OriginalSize.Width,
-				Height: mlResponse.Metadata.OriginalSize.Height,
-			},
-			ProcessedSize: ImageSize{
-				Width:  mlResponse.Metadata.ProcessedSize.Width,
-				Height: mlResponse.Metadata.ProcessedSize.Height,
-			},
-		},
-	}
-
-	utils.RespondSuccess(c, http.StatusOK, response)
+	// Return the PNG image directly as binary
+	c.Data(http.StatusOK, "image/png", imageBytes)
 }
