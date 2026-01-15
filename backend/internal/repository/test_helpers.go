@@ -16,7 +16,7 @@ func setupTestDB(t *testing.T) *database.DB {
 
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://scrappd_user:scrappd_password@localhost:5432/scrappd_test?sslmode=disable"
+		dsn = "postgres://scrappd_app:scrappd_go@localhost:5432/scrappd?sslmode=disable"
 	}
 
 	pool, err := pgxpool.New(context.Background(), dsn)

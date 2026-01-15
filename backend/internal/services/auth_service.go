@@ -89,7 +89,7 @@ func (s *authService) Login(ctx context.Context, req *models.LoginRequest) (*mod
 		user.ID,
 		user.Email,
 		user.Username,
-		user.SubscriptionTier,
+		string(user.SubscriptionTier),
 	)
 	if err != nil {
 		return nil, utils.ErrInternalServer("Failed to generate access token", err)
@@ -163,7 +163,7 @@ func (s *authService) RefreshAccessToken(ctx context.Context, refreshToken strin
 		user.ID,
 		user.Email,
 		user.Username,
-		user.SubscriptionTier,
+		string(user.SubscriptionTier),
 	)
 	if err != nil {
 		return nil, utils.ErrInternalServer("Failed to generate access token", err)
