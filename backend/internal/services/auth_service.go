@@ -59,7 +59,7 @@ func (s *authService) Register(ctx context.Context, req *models.CreateUserReques
 		Username:               req.Username,
 		DisplayName:            req.DisplayName,
 		PasswordHash:           hashedPassword,
-		SubscriptionTier:       "free",
+		SubscriptionTier:       models.TierFree,
 		SubscriptionStatus:     "active",
 		MonthlyBgRemovalsLimit: 5,   // Free tier: 5 removals/month
 		MonthlyStorageLimitMB:  100, // Free tier: 100MB storage
