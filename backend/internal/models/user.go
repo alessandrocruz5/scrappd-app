@@ -16,10 +16,10 @@ type User struct {
 	Bio             *string   `json:"bio,omitempty"`
 
 	// Subscription
-	SubscriptionTier      string     `json:"subscription_tier"`
-	StripeCustomerID      *string    `json:"-"`
-	SubscriptionStatus    string     `json:"subscription_status"`
-	SubscriptionExpiresAt *time.Time `json:"subscription_expires_at,omitempty"`
+	SubscriptionTier      SubscriptionTier `json:"subscription_tier" db:"subscription_tier"`
+	StripeCustomerID      *string          `json:"-"`
+	SubscriptionStatus    string           `json:"subscription_status"`
+	SubscriptionExpiresAt *time.Time       `json:"subscription_expires_at,omitempty"`
 
 	// Usage limits
 	MonthlyBgRemovalsUsed  int     `json:"monthly_bg_removals_used"`

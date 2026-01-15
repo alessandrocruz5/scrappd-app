@@ -59,7 +59,7 @@ func (s *authService) Register(ctx context.Context, req *models.CreateUserReques
 		Username:               req.Username,
 		DisplayName:            req.DisplayName,
 		PasswordHash:           hashedPassword,
-		SubscriptionTier:       "free",
+		SubscriptionTier:       models.TierFree,
 		SubscriptionStatus:     "active",
 		MonthlyBgRemovalsLimit: 5,   // Free tier: 5 removals/month
 		MonthlyStorageLimitMB:  100, // Free tier: 100MB storage
@@ -89,7 +89,7 @@ func (s *authService) Login(ctx context.Context, req *models.LoginRequest) (*mod
 		user.ID,
 		user.Email,
 		user.Username,
-		user.SubscriptionTier,
+		string(user.SubscriptionTier),
 	)
 	if err != nil {
 		return nil, utils.ErrInternalServer("Failed to generate access token", err)
@@ -163,7 +163,7 @@ func (s *authService) RefreshAccessToken(ctx context.Context, refreshToken strin
 		user.ID,
 		user.Email,
 		user.Username,
-		user.SubscriptionTier,
+		string(user.SubscriptionTier),
 	)
 	if err != nil {
 		return nil, utils.ErrInternalServer("Failed to generate access token", err)
