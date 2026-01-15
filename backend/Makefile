@@ -1,4 +1,11 @@
+
 .PHONY: help run test test-coverage build clean dev lint install-tools install-air
+
+# Load environment variables from .env file
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
 
 # Variables
 BINARY_NAME=scrappd-api
@@ -6,6 +13,7 @@ GO=go
 GOTEST=$(GO) test
 GOBUILD=$(GO) build
 GOCLEAN=$(GO) clean
+PROJECT_ROOT := $(shell pwd)
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -90,3 +98,80 @@ docker-run: ## Run Docker container
 # Quick development commands
 quick-start: install-deps dev-manual ## Quick start without air
 dev-with-air: install-air dev ## Install air and run with hot reload
+
+# Database Migration Commands
+
+.PHONY: migrate-up migrate-down migrate-force migrate-create
+
+# Simple migration commands with hardcoded values for local dev
+migrate-up-local:
+	@echo "Running migrations..."
+	migrate -path migrations -database "postgresql://apa@localhost:5432/scrappd?sslmode=disable" up
+
+migrate-status-local:
+	@echo "Checking migration status..."
+	migrate -path migrations -database "postgresql://apa@localhost:5432/scrappd?sslmode=disable" version
+
+migrate-down-local:
+	@echo "Rolling back last migration..."
+	migrate -path migrations -database "postgresql://apa@localhost:5432/scrappd?sslmode=disable" down 1
+
+# Run all pending migrations
+migrate-up:
+	@echo "Running migrations..."
+	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" up
+
+# Rollback the last migration
+migrate-down:
+	@echo "Rolling back last migration..."
+	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" down 1
+
+# Force migration to specific version (use with caution)
+migrate-force:
+	@echo "Forcing migration to version $(VERSION)..."
+	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" force $(VERSION)
+
+# Create a new migration file
+migrate-create:
+	@echo "Creating migration: $(NAME)"
+	migrate create -ext sql -dir migrations -seq $(NAME)
+
+# Check migration status
+migrate-status:
+	@echo "Checking migration status..."
+	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" version
+
+# Repository Tests
+
+.PHONY: test-repo test-repo-verbose test-repo-coverage
+
+# Run repository tests
+test-repo:
+	@echo "Running repository tests..."
+	go test -v ./internal/repository/postgres/... -count=1
+
+# Run repository tests with verbose output
+test-repo-verbose:
+	@echo "Running repository tests (verbose)..."
+	go test -v -race ./internal/repository/postgres/... -count=1
+
+# Run repository tests with coverage
+test-repo-coverage:
+	@echo "Running repository tests with coverage..."
+	go test -v -race -coverprofile=coverage_repo.out -covermode=atomic ./internal/repository/postgres/...
+	@echo "Coverage report saved to coverage_repo.out"
+	@echo "View coverage report: go tool cover -html=coverage_repo.out"
+
+# Complete Test Suite
+
+.PHONY: test-all test-integration
+
+# Run all tests (unit + integration)
+test-all:
+	@echo "Running all tests..."
+	go test -v -race ./... -count=1
+
+# Run integration tests only (requires services to be running)
+test-integration:
+	@echo "Running integration tests..."
+	go test -v -race -tags=integration ./test/integration/... -count=1
