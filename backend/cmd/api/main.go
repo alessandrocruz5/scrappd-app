@@ -11,7 +11,10 @@ import (
 
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/api"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/config"
+	"github.com/alessandrocruz5/scrappd-app/backend/internal/database"
+	"github.com/alessandrocruz5/scrappd-app/backend/internal/repository"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/services"
+	"github.com/alessandrocruz5/scrappd-app/backend/pkg/auth"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,12 +44,29 @@ func main() {
 		"port":        cfg.Server.Port,
 	}).Info("Starting Scrapp'd API")
 
+	db, err := database.NewDB(cfg.Database.DSN, logger)
+	if err != nil {
+		logger.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	userRepo := repository.NewUserRepository(db)
+
+	tokenManager := auth.NewTokenManager(
+		cfg.JWT.AccessTokenSecret,
+		cfg.JWT.RefreshTokenSecret,
+		cfg.JWT.AccessTokenExpiry,
+		cfg.JWT.RefreshTokenExpiry,
+	)
+
 	// Initialize ML client
 	mlClient := services.NewMLClient(&cfg.MLService)
+	authService := services.NewAuthService(userRepo, tokenManager)
+
 	logger.Info("ML client initialized")
 
 	// Setup router
-	router := api.SetupRouter(mlClient, logger)
+	router := api.SetupRouter(mlClient, authService, tokenManager, logger)
 
 	// Create HTTP server
 	server := &http.Server{

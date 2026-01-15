@@ -25,7 +25,7 @@ func TestLoad_WithDefaults(t *testing.T) {
 	// Test default database config
 	assert.Equal(t, "localhost", cfg.Database.Host)
 	assert.Equal(t, "5432", cfg.Database.Port)
-	assert.Equal(t, "scrappd_user", cfg.Database.User)
+	assert.Equal(t, "scrappd_app", cfg.Database.User)
 
 	// Test default ML service config
 	assert.Equal(t, "http://localhost:8000", cfg.MLService.BaseURL)

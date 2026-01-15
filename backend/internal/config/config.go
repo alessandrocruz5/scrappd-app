@@ -15,6 +15,7 @@ type Config struct {
 	Redis     RedisConfig
 	MLService MLServiceConfig
 	Storage   StorageConfig
+	JWT       JWTConfig
 }
 
 type ServerConfig struct {
@@ -58,6 +59,13 @@ type StorageConfig struct {
 	Region          string
 }
 
+type JWTConfig struct {
+	AccessTokenSecret  string
+	RefreshTokenSecret string
+	AccessTokenExpiry  time.Duration
+	RefreshTokenExpiry time.Duration
+}
+
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
 	// Load .env file if it exists (for local development)
@@ -75,9 +83,9 @@ func Load() (*Config, error) {
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "scrappd_user"),
-			Password: getEnv("DB_PASSWORD", "scrappd_password"),
-			DBName:   getEnv("DB_NAME", "scrappd_db"),
+			User:     getEnv("DB_USER", "scrappd_app"),
+			Password: getEnv("DB_PASSWORD", "scrappd-go"),
+			DBName:   getEnv("DB_NAME", "scrappd"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		Redis: RedisConfig{
@@ -98,6 +106,12 @@ func Load() (*Config, error) {
 			SecretAccessKey: getEnv("STORAGE_SECRET_ACCESS_KEY", ""),
 			BucketName:      getEnv("STORAGE_BUCKET_NAME", "scrappd-images"),
 			Region:          getEnv("STORAGE_REGION", "auto"),
+		},
+		JWT: JWTConfig{
+			AccessTokenSecret:  getEnv("JWT_ACCESS_SECRET", "your-secret-key-change-in-production"),
+			RefreshTokenSecret: getEnv("JWT_REFRESH_SECRET", "your-refresh-secret-change-in-production"),
+			AccessTokenExpiry:  getDurationEnv("JWT_ACCESS_EXPIRY", 15*time.Minute),
+			RefreshTokenExpiry: getDurationEnv("JWT_REFRESH_EXPIRY", 7*24*time.Hour),
 		},
 	}
 
