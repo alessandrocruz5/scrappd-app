@@ -1,4 +1,11 @@
+
 .PHONY: help run test test-coverage build clean dev lint install-tools install-air
+
+# Load environment variables from .env file
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
 
 # Variables
 BINARY_NAME=scrappd-api
@@ -6,6 +13,7 @@ GO=go
 GOTEST=$(GO) test
 GOBUILD=$(GO) build
 GOCLEAN=$(GO) clean
+PROJECT_ROOT := $(shell pwd)
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
