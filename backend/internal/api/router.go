@@ -13,20 +13,28 @@ import (
 func SetupRouter(
 	mlClient services.MLClient,
 	authService services.AuthService,
+	itemsService services.ItemsService,
+	usageService services.UsageService,
+	dbHealth handlers.DBHealthChecker,
+	redisHealth handlers.RedisHealthChecker,
+	storageHealth handlers.StorageHealthChecker,
 	tokenManager *auth.TokenManager,
 	logger *logrus.Logger,
 ) *gin.Engine {
 	router := gin.New()
 
 	// Add middleware
+	router.Use(middleware.RequestID())
 	router.Use(middleware.Recovery(logger))
 	router.Use(middleware.Logger(logger))
 	router.Use(middleware.CORS())
+	router.Use(middleware.RateLimitHeaders(usageService, logger))
 
 	// Initialize handlers
-	healthHandler := handlers.NewHealthHandler(mlClient)
+	healthHandler := handlers.NewHealthHandler(mlClient, dbHealth, redisHealth, storageHealth)
 	mlHandler := handlers.NewMLHandler(mlClient)
 	authHandler := handlers.NewAuthHandler(authService)
+	itemsHandler := handlers.NewItemsHandler(itemsService)
 
 	// Root level health checks
 	router.GET("/health", healthHandler.BasicHealth)
@@ -61,6 +69,16 @@ func SetupRouter(
 		mlRoutes.Use(middleware.AuthMiddleware(tokenManager))
 		{
 			mlRoutes.POST("/process", mlHandler.RemoveBackgroundFromFile)
+		}
+
+		itemsRoutes := v1.Group("/items")
+		itemsRoutes.Use(middleware.AuthMiddleware(tokenManager))
+		{
+			itemsRoutes.POST("", itemsHandler.CreateItem)
+			itemsRoutes.GET("", itemsHandler.ListItems)
+			itemsRoutes.GET("/usage", itemsHandler.GetUsage)
+			itemsRoutes.GET("/:id", itemsHandler.GetItem)
+			itemsRoutes.DELETE("/:id", itemsHandler.DeleteItem)
 		}
 
 		// Legacy endpoints (keep for backward compatibility, but add optional auth)

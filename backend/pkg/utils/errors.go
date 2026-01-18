@@ -42,6 +42,7 @@ const (
 	ErrCodeMLServiceError     = "ML_SERVICE_ERROR"
 	ErrCodeStorageError       = "STORAGE_ERROR"
 	ErrCodeDatabaseError      = "DATABASE_ERROR"
+	ErrCodeRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 )
 
 // NewAppError creates a new AppError
@@ -153,4 +154,11 @@ func ErrDatabase(message string, internal error) *AppError {
 		message = "Database error"
 	}
 	return NewAppError(ErrCodeDatabaseError, message, http.StatusInternalServerError, internal)
+}
+
+func ErrRateLimitExceeded(message string) *AppError {
+	if message == "" {
+		message = "Rate limit exceeded"
+	}
+	return NewAppError(ErrCodeRateLimitExceeded, message, http.StatusTooManyRequests, nil)
 }

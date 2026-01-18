@@ -36,8 +36,8 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at
-CREATE TRIGGER update_items_updated_at BEFORE UPDATE ON items
+CREATE TRIGGER update_items_updated_at BEFORE UPDATE ON content.items
     FOR EACH ROW EXECUTE FUNCTION content.update_updated_at_column();
 
-CREATE TRIGGER update_usage_tracking_updated_at BEFORE UPDATE ON usage_tracking
+CREATE TRIGGER update_usage_tracking_updated_at BEFORE UPDATE ON content.usage_tracking
     FOR EACH ROW EXECUTE FUNCTION content.update_updated_at_column();

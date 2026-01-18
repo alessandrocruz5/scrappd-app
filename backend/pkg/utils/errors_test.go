@@ -180,3 +180,11 @@ func TestErrDatabase(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, err.StatusCode)
 	assert.Equal(t, internalErr, err.Internal)
 }
+
+func TestErrRateLimitExceeded(t *testing.T) {
+	err := ErrRateLimitExceeded("Usage limit exceeded")
+
+	assert.Equal(t, ErrCodeRateLimitExceeded, err.Code)
+	assert.Equal(t, "Usage limit exceeded", err.Message)
+	assert.Equal(t, http.StatusTooManyRequests, err.StatusCode)
+}

@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,36 +16,37 @@ import (
 
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/api"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/config"
-	"github.com/alessandrocruz5/scrappd-app/backend/internal/database"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/models"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/repository"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/services"
 	"github.com/alessandrocruz5/scrappd-app/backend/pkg/auth"
 	"github.com/alessandrocruz5/scrappd-app/backend/pkg/utils"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// setupTestDB creates a test database connection
-func setupTestDB(t *testing.T) *database.DB {
-	logger := logrus.New()
-	logger.SetOutput(io.Discard)
+type noopItemsService struct{}
 
-	cfg, err := config.Load()
-	require.NoError(t, err)
-
-	db, err := database.NewDB(cfg.Database.DSN, logger)
-	require.NoError(t, err)
-
-	return db
+func (s *noopItemsService) CreateItem(ctx context.Context, userID uuid.UUID, tier models.SubscriptionTier, fileHeader *multipart.FileHeader, format string, itemName string, itemCategory string, tags []string) (*models.Item, error) {
+	return nil, utils.ErrInternalServer("Items service not configured", nil)
 }
 
-// cleanupTestUser removes test user from database
-func cleanupTestUser(t *testing.T, db *database.DB, email string) {
-	ctx := context.Background()
-	_, err := db.Pool.Exec(ctx, "DELETE FROM auth.users WHERE email = $1", email)
-	require.NoError(t, err)
+func (s *noopItemsService) ListItems(ctx context.Context, userID uuid.UUID, page, perPage int) ([]*models.Item, int, error) {
+	return nil, 0, utils.ErrInternalServer("Items service not configured", nil)
+}
+
+func (s *noopItemsService) GetItem(ctx context.Context, userID, itemID uuid.UUID) (*models.Item, error) {
+	return nil, utils.ErrInternalServer("Items service not configured", nil)
+}
+
+func (s *noopItemsService) DeleteItem(ctx context.Context, userID, itemID uuid.UUID) error {
+	return utils.ErrInternalServer("Items service not configured", nil)
+}
+
+func (s *noopItemsService) GetUsageStats(ctx context.Context, userID uuid.UUID) (*models.UsageStats, map[string]string, error) {
+	return nil, nil, utils.ErrInternalServer("Items service not configured", nil)
 }
 
 func TestAuthFlow_Integration(t *testing.T) {
@@ -65,7 +67,17 @@ func TestAuthFlow_Integration(t *testing.T) {
 		RetryDelay: 2 * time.Second,
 	})
 
-	router := api.SetupRouter(mlClient, authService, tokenManager, logger)
+	router := api.SetupRouter(
+		mlClient,
+		authService,
+		&noopItemsService{},
+		nil,
+		nil,
+		nil,
+		nil,
+		tokenManager,
+		logger,
+	)
 
 	testEmail := "integration-test@example.com"
 	testPassword := "TestPassword123!"

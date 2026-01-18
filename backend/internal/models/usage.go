@@ -26,7 +26,7 @@ type UsageTracking struct {
 
 type UsageStats struct {
 	ItemsProcessed int       `json:"items_processed"`
-	ItemsLimt      *int      `json:"items_limit,omitempty"`
+	ItemsLimit     *int      `json:"items_limit,omitempty"`
 	ItemsRemaining *int      `json:"items_remaining,omitempty"`
 	PeriodStart    time.Time `json:"period_start"`
 	PeriodEnd      time.Time `json:"period_end"`

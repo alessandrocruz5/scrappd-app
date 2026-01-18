@@ -13,12 +13,30 @@ import (
 // HealthHandler handles health check endpoints
 type HealthHandler struct {
 	mlClient services.MLClient
+	db       DBHealthChecker
+	redis    RedisHealthChecker
+	storage  StorageHealthChecker
+}
+
+type DBHealthChecker interface {
+	Health(ctx context.Context) error
+}
+
+type RedisHealthChecker interface {
+	Ping(ctx context.Context) error
+}
+
+type StorageHealthChecker interface {
+	HealthCheck(ctx context.Context) error
 }
 
 // NewHealthHandler creates a new health handler
-func NewHealthHandler(mlClient services.MLClient) *HealthHandler {
+func NewHealthHandler(mlClient services.MLClient, db DBHealthChecker, redis RedisHealthChecker, storage StorageHealthChecker) *HealthHandler {
 	return &HealthHandler{
 		mlClient: mlClient,
+		db:       db,
+		redis:    redis,
+		storage:  storage,
 	}
 }
 
@@ -81,11 +99,32 @@ func (h *HealthHandler) DeepHealth(c *gin.Context) {
 	services := make(map[string]ServiceHealth)
 	overallStatus := StatusHealthy
 
+	// Check Database
+	dbHealth := h.checkDatabase(ctx)
+	services["database"] = dbHealth
+	if dbHealth.Status == StatusUnhealthy {
+		overallStatus = StatusDegraded
+	}
+
+	// Check Redis
+	redisHealth := h.checkRedis(ctx)
+	services["redis"] = redisHealth
+	if redisHealth.Status == StatusUnhealthy {
+		overallStatus = StatusDegraded
+	}
+
 	// Check ML Service
 	mlHealth := h.checkMLService(ctx)
 	services["ml_service"] = mlHealth
 
 	if mlHealth.Status == StatusUnhealthy {
+		overallStatus = StatusDegraded
+	}
+
+	// Check Storage
+	storageHealth := h.checkStorage(ctx)
+	services["storage"] = storageHealth
+	if storageHealth.Status == StatusUnhealthy {
 		overallStatus = StatusDegraded
 	}
 
@@ -127,6 +166,69 @@ func (h *HealthHandler) checkMLService(ctx context.Context) ServiceHealth {
 	}
 }
 
+func (h *HealthHandler) checkDatabase(ctx context.Context) ServiceHealth {
+	if h.db == nil {
+		return ServiceHealth{
+			Status:  StatusUnhealthy,
+			Message: "Database health check not configured",
+		}
+	}
+
+	if err := h.db.Health(ctx); err != nil {
+		return ServiceHealth{
+			Status:  StatusUnhealthy,
+			Message: "Database is unreachable",
+		}
+	}
+
+	return ServiceHealth{
+		Status:  StatusHealthy,
+		Message: "Database is operational",
+	}
+}
+
+func (h *HealthHandler) checkRedis(ctx context.Context) ServiceHealth {
+	if h.redis == nil {
+		return ServiceHealth{
+			Status:  StatusUnhealthy,
+			Message: "Redis health check not configured",
+		}
+	}
+
+	if err := h.redis.Ping(ctx); err != nil {
+		return ServiceHealth{
+			Status:  StatusUnhealthy,
+			Message: "Redis is unreachable",
+		}
+	}
+
+	return ServiceHealth{
+		Status:  StatusHealthy,
+		Message: "Redis is operational",
+	}
+}
+
+func (h *HealthHandler) checkStorage(ctx context.Context) ServiceHealth {
+	if h.storage == nil {
+		return ServiceHealth{
+			Status:  StatusUnhealthy,
+			Message: "Storage health check not configured",
+		}
+	}
+
+	if err := h.storage.HealthCheck(ctx); err != nil {
+		return ServiceHealth{
+			Status:  StatusUnhealthy,
+			Message: "Storage is unreachable",
+		}
+	}
+
+	return ServiceHealth{
+		Status:  StatusHealthy,
+		Message: "Storage is operational",
+	}
+}
+
 // ReadinessProbe checks if the service is ready to accept traffic
 // @Summary Readiness probe
 // @Description Kubernetes readiness probe endpoint
@@ -139,10 +241,30 @@ func (h *HealthHandler) ReadinessProbe(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
+	// Check critical dependencies
+	if h.db == nil || h.redis == nil || h.storage == nil {
+		utils.RespondError(c, utils.ErrServiceUnavailable("API", nil))
+		return
+	}
+
+	if err := h.db.Health(ctx); err != nil {
+		utils.RespondError(c, utils.ErrServiceUnavailable("Database", err))
+		return
+	}
+
+	if err := h.redis.Ping(ctx); err != nil {
+		utils.RespondError(c, utils.ErrServiceUnavailable("Redis", err))
+		return
+	}
+
+	if err := h.storage.HealthCheck(ctx); err != nil {
+		utils.RespondError(c, utils.ErrServiceUnavailable("Storage", err))
+		return
+	}
+
 	// Check if ML service is accessible
-	_, err := h.mlClient.HealthCheck(ctx)
-	if err != nil {
-		utils.RespondError(c, utils.ErrServiceUnavailable("API", err))
+	if _, err := h.mlClient.HealthCheck(ctx); err != nil {
+		utils.RespondError(c, utils.ErrServiceUnavailable("ML", err))
 		return
 	}
 

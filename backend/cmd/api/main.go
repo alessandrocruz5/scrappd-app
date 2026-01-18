@@ -51,6 +51,8 @@ func main() {
 	defer db.Close()
 
 	userRepo := repository.NewUserRepository(db)
+	usageRepo := repository.NewUsageRepository(db.Pool)
+	itemsRepo := repository.NewItemsRepository(db)
 
 	tokenManager := auth.NewTokenManager(
 		cfg.JWT.AccessTokenSecret,
@@ -62,11 +64,35 @@ func main() {
 	// Initialize ML client
 	mlClient := services.NewMLClient(&cfg.MLService)
 	authService := services.NewAuthService(userRepo, tokenManager)
+	usageService := services.NewUsageService(usageRepo)
+
+	storage, err := services.NewR2Storage(&cfg.Storage, logger)
+	if err != nil {
+		logger.Fatalf("Failed to initialize storage: %v", err)
+	}
+
+	redisClient, err := services.NewRedisClient(&cfg.Redis)
+	if err != nil {
+		logger.Fatalf("Failed to initialize Redis client: %v", err)
+	}
+	defer redisClient.Close()
+
+	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage)
 
 	logger.Info("ML client initialized")
 
 	// Setup router
-	router := api.SetupRouter(mlClient, authService, tokenManager, logger)
+	router := api.SetupRouter(
+		mlClient,
+		authService,
+		itemsService,
+		usageService,
+		db,
+		redisClient,
+		storage,
+		tokenManager,
+		logger,
+	)
 
 	// Create HTTP server
 	server := &http.Server{

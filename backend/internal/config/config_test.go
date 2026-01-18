@@ -40,6 +40,8 @@ func TestLoad_WithEnvironmentVariables(t *testing.T) {
 	os.Setenv("DB_HOST", "db.example.com")
 	os.Setenv("ML_SERVICE_URL", "http://ml-service:8000")
 	os.Setenv("ML_SERVICE_TIMEOUT", "60s")
+	os.Setenv("JWT_ACCESS_SECRET", "test-access-secret")
+	os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret")
 	defer os.Clearenv()
 
 	cfg, err := Load()

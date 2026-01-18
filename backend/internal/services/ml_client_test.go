@@ -2,9 +2,12 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,41 +34,41 @@ func setupTestMLClient(handler http.HandlerFunc) (*mlClient, *httptest.Server) {
 }
 
 func TestRemoveBackground_Success(t *testing.T) {
-	expectedResponse := models.RemoveBackgroundResponse{
-		ProcessedImage: "base64processedimage",
-		Metadata: models.BackgroundRemovalMeta{
-			ProcessingTime: 14.5,
-			Model:          "BiRefNet",
-			OriginalSize:   models.Size{Width: 1920, Height: 1080},
-			ProcessedSize:  models.Size{Width: 1920, Height: 1080},
-		},
-	}
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
+	processedBytes := []byte("processed-image")
+	expectedBase64 := base64.StdEncoding.EncodeToString(processedBytes)
 
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "/api/v1/remove-background", r.URL.Path)
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "/process", r.URL.Path)
+		assert.True(t, strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data"))
 
-		// Verify request body
-		var req models.RemoveBackgroundRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := r.ParseMultipartForm(10 << 20)
 		require.NoError(t, err)
-		assert.Equal(t, "base64imagedata", req.ImageData)
-		assert.Equal(t, "png", req.Format)
 
+		file, header, err := r.FormFile("file")
+		require.NoError(t, err)
+		defer file.Close()
+
+		assert.Equal(t, "image.png", header.Filename)
+		assert.Equal(t, "image/png", header.Header.Get("Content-Type"))
+		_, err = io.ReadAll(file)
+		require.NoError(t, err)
+
+		w.Header().Set("X-Processing-Time", "14.5")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(expectedResponse)
+		w.Write(processedBytes)
 	})
 	defer server.Close()
 
 	ctx := context.Background()
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	require.NoError(t, err)
 	require.NotNil(t, response)
-	assert.Equal(t, expectedResponse.ProcessedImage, response.ProcessedImage)
-	assert.Equal(t, expectedResponse.Metadata.ProcessingTime, response.Metadata.ProcessingTime)
-	assert.Equal(t, expectedResponse.Metadata.Model, response.Metadata.Model)
+	assert.Equal(t, expectedBase64, response.ProcessedImage)
+	assert.Equal(t, 14.5, response.Metadata.ProcessingTime)
+	assert.Equal(t, "birefnet-general", response.Metadata.Model)
 }
 
 func TestRemoveBackground_EmptyImageData(t *testing.T) {
@@ -87,6 +90,7 @@ func TestRemoveBackground_EmptyImageData(t *testing.T) {
 }
 
 func TestRemoveBackground_MLServiceError(t *testing.T) {
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(models.ErrorResponse{
@@ -96,7 +100,7 @@ func TestRemoveBackground_MLServiceError(t *testing.T) {
 	defer server.Close()
 
 	ctx := context.Background()
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	assert.Nil(t, response)
 	require.Error(t, err)
@@ -108,6 +112,7 @@ func TestRemoveBackground_MLServiceError(t *testing.T) {
 }
 
 func TestRemoveBackground_ServerError(t *testing.T) {
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(models.ErrorResponse{
@@ -117,7 +122,7 @@ func TestRemoveBackground_ServerError(t *testing.T) {
 	defer server.Close()
 
 	ctx := context.Background()
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	assert.Nil(t, response)
 	require.Error(t, err)
@@ -129,13 +134,9 @@ func TestRemoveBackground_ServerError(t *testing.T) {
 
 func TestRemoveBackground_RetryOnServerError(t *testing.T) {
 	attemptCount := 0
-	expectedResponse := models.RemoveBackgroundResponse{
-		ProcessedImage: "base64processedimage",
-		Metadata: models.BackgroundRemovalMeta{
-			ProcessingTime: 14.5,
-			Model:          "BiRefNet",
-		},
-	}
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
+	processedBytes := []byte("processed-image")
+	expectedBase64 := base64.StdEncoding.EncodeToString(processedBytes)
 
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
 		attemptCount++
@@ -147,21 +148,22 @@ func TestRemoveBackground_RetryOnServerError(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(expectedResponse)
+		w.Write(processedBytes)
 	})
 	defer server.Close()
 
 	ctx := context.Background()
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	require.NoError(t, err)
 	require.NotNil(t, response)
 	assert.Equal(t, 2, attemptCount) // Should have retried once
-	assert.Equal(t, expectedResponse.ProcessedImage, response.ProcessedImage)
+	assert.Equal(t, expectedBase64, response.ProcessedImage)
 }
 
 func TestRemoveBackground_NoRetryOnClientError(t *testing.T) {
 	attemptCount := 0
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
 
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
 		attemptCount++
@@ -173,7 +175,7 @@ func TestRemoveBackground_NoRetryOnClientError(t *testing.T) {
 	defer server.Close()
 
 	ctx := context.Background()
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	assert.Nil(t, response)
 	require.Error(t, err)
@@ -182,6 +184,7 @@ func TestRemoveBackground_NoRetryOnClientError(t *testing.T) {
 
 func TestRemoveBackground_AllRetriesFail(t *testing.T) {
 	attemptCount := 0
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
 
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
 		attemptCount++
@@ -190,7 +193,7 @@ func TestRemoveBackground_AllRetriesFail(t *testing.T) {
 	defer server.Close()
 
 	ctx := context.Background()
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	assert.Nil(t, response)
 	require.Error(t, err)
@@ -203,6 +206,7 @@ func TestRemoveBackground_AllRetriesFail(t *testing.T) {
 }
 
 func TestRemoveBackground_ContextCancellation(t *testing.T) {
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
 		// Delay to allow context cancellation
 		time.Sleep(200 * time.Millisecond)
@@ -213,21 +217,22 @@ func TestRemoveBackground_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	assert.Nil(t, response)
 	require.Error(t, err)
 }
 
 func TestRemoveBackground_InvalidJSONResponse(t *testing.T) {
+	inputBase64 := base64.StdEncoding.EncodeToString(testPNGBytes())
 	client, server := setupTestMLClient(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("invalid json"))
 	})
 	defer server.Close()
 
 	ctx := context.Background()
-	response, err := client.RemoveBackground(ctx, "base64imagedata", "png")
+	response, err := client.RemoveBackground(ctx, inputBase64, "png")
 
 	assert.Nil(t, response)
 	require.Error(t, err)
@@ -235,7 +240,21 @@ func TestRemoveBackground_InvalidJSONResponse(t *testing.T) {
 	appErr, ok := err.(*utils.AppError)
 	require.True(t, ok)
 	assert.Equal(t, utils.ErrCodeMLServiceError, appErr.Code)
-	assert.Contains(t, appErr.Message, "Failed to decode response")
+	assert.Contains(t, appErr.Message, "invalid json")
+}
+
+func testPNGBytes() []byte {
+	return []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+		0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+		0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+		0x42, 0x60, 0x82,
+	}
 }
 
 func TestHealthCheck_Success(t *testing.T) {

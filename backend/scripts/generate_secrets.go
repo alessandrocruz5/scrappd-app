@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fmt.Println("🔐 JWT Secret Generator\n")
+	fmt.Println("🔐 JWT Secret Generator")
 
 	accessSecret, err := generateSecret(32)
 	if err != nil {
@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("✅ Generated JWT Secrets:\n")
+	fmt.Println("✅ Generated JWT Secrets:")
 	fmt.Println("Access Token Secret:")
 	fmt.Println(accessSecret)
 	fmt.Println("")

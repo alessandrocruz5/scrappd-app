@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -83,7 +84,7 @@ func TestUsageService_CheckAndIncrementUsage_FreeUser(t *testing.T) {
 		assert.True(t, canProcess)
 		require.NotNil(t, stats)
 		assert.Equal(t, 3, stats.ItemsProcessed) // Should show incremented value
-		assert.Equal(t, 5, *stats.ItemsLimt)
+		assert.Equal(t, 5, *stats.ItemsLimit)
 		assert.Equal(t, 2, *stats.ItemsRemaining) // 5 - 3 = 2
 
 		mockRepo.AssertExpectations(t)
@@ -165,7 +166,7 @@ func TestUsageService_CheckAndIncrementUsage_ProUser(t *testing.T) {
 		assert.True(t, canProcess)
 		require.NotNil(t, stats)
 		assert.True(t, stats.IsUnlimited)
-		assert.Nil(t, stats.ItemsLimt)
+		assert.Nil(t, stats.ItemsLimit)
 		assert.Nil(t, stats.ItemsRemaining)
 
 		mockRepo.AssertExpectations(t)
@@ -197,7 +198,7 @@ func TestUsageService_GetCurrentUsageStats(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, stats)
 		assert.Equal(t, 3, stats.ItemsProcessed)
-		assert.Equal(t, 5, *stats.ItemsLimt)
+		assert.Equal(t, 5, *stats.ItemsLimit)
 		assert.Equal(t, 2, *stats.ItemsRemaining)
 		assert.False(t, stats.IsUnlimited)
 
@@ -222,7 +223,7 @@ func TestUsageService_GetCurrentUsageStats(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, stats)
 		assert.Equal(t, 50, stats.ItemsProcessed)
-		assert.Nil(t, stats.ItemsLimt)
+		assert.Nil(t, stats.ItemsLimit)
 		assert.Nil(t, stats.ItemsRemaining)
 		assert.True(t, stats.IsUnlimited)
 
@@ -375,7 +376,7 @@ func TestUsageService_GetRateLimitHeaders(t *testing.T) {
 		remaining := 3
 		stats := &models.UsageStats{
 			ItemsProcessed: 2,
-			ItemsLimt:      &limit,
+			ItemsLimit:     &limit,
 			ItemsRemaining: &remaining,
 			PeriodEnd:      time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			IsUnlimited:    false,
@@ -385,14 +386,14 @@ func TestUsageService_GetRateLimitHeaders(t *testing.T) {
 
 		assert.Equal(t, "5", headers["X-RateLimit-Limit"])
 		assert.Equal(t, "3", headers["X-RateLimit-Remaining"])
-		assert.Equal(t, "1738367999", headers["X-RateLimit-Reset"])
+		assert.Equal(t, fmt.Sprintf("%d", stats.PeriodEnd.Unix()), headers["X-RateLimit-Reset"])
 	})
 
 	// Test: Pro user headers
 	t.Run("pro_user_headers", func(t *testing.T) {
 		stats := &models.UsageStats{
 			ItemsProcessed: 50,
-			ItemsLimt:      nil,
+			ItemsLimit:     nil,
 			ItemsRemaining: nil,
 			PeriodEnd:      time.Date(2026, 1, 31, 23, 59, 59, 0, time.UTC),
 			IsUnlimited:    true,
@@ -402,6 +403,6 @@ func TestUsageService_GetRateLimitHeaders(t *testing.T) {
 
 		assert.Equal(t, "unlimited", headers["X-RateLimit-Limit"])
 		assert.Equal(t, "unlimited", headers["X-RateLimit-Remaining"])
-		assert.Equal(t, "1738367999", headers["X-RateLimit-Reset"])
+		assert.Equal(t, fmt.Sprintf("%d", stats.PeriodEnd.Unix()), headers["X-RateLimit-Reset"])
 	})
 }

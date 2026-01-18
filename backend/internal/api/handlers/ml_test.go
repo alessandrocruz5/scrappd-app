@@ -21,7 +21,17 @@ func TestRemoveBackground_Success(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	handler := NewMLHandler(mockMLClient)
 
-	testImage := []byte("fake image data")
+	testImage := []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+		0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+		0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+		0x42, 0x60, 0x82,
+	}
 	base64Image := base64.StdEncoding.EncodeToString(testImage)
 
 	mockMLClient.On("RemoveBackground", mock.Anything, base64Image, "png").Return(&models.RemoveBackgroundResponse{
@@ -250,8 +260,8 @@ func TestRemoveBackground_DefaultFormat(t *testing.T) {
 	base64Image := base64.StdEncoding.EncodeToString(testImage)
 
 	// Should default to "png" format
-	mockMLClient.On("RemoveBackground", mock.Anything, base64Image, "png").Return(&models.RemoveBackgroundResponse{
-		ProcessedImage: "processed_image",
+	mockMLClient.On("RemoveBackground", mock.Anything, mock.Anything, "png").Return(&models.RemoveBackgroundResponse{
+		ProcessedImage: base64.StdEncoding.EncodeToString([]byte("processed_image")),
 		Metadata: models.BackgroundRemovalMeta{
 			ProcessingTime: 14.5,
 			Model:          "BiRefNet",
@@ -282,11 +292,20 @@ func TestRemoveBackgroundFromFile_Success(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	handler := NewMLHandler(mockMLClient)
 
-	testImage := []byte("fake image data")
-	base64Image := base64.StdEncoding.EncodeToString(testImage)
+	testImage := []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+		0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+		0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+		0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+		0x42, 0x60, 0x82,
+	}
 
-	mockMLClient.On("RemoveBackground", mock.Anything, base64Image, "png").Return(&models.RemoveBackgroundResponse{
-		ProcessedImage: "processed_image",
+	mockMLClient.On("RemoveBackground", mock.Anything, mock.Anything, "png").Return(&models.RemoveBackgroundResponse{
+		ProcessedImage: base64.StdEncoding.EncodeToString([]byte("processed_image")),
 		Metadata: models.BackgroundRemovalMeta{
 			ProcessingTime: 14.5,
 			Model:          "BiRefNet",
@@ -322,11 +341,8 @@ func TestRemoveBackgroundFromFile_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var response utils.Response
-	err = json.Unmarshal(w.Body.Bytes(), &response)
-	require.NoError(t, err)
-
-	assert.True(t, response.Success)
+	assert.Equal(t, "image/png", w.Header().Get("Content-Type"))
+	assert.NotEmpty(t, w.Body.Bytes())
 	mockMLClient.AssertExpectations(t)
 }
 
