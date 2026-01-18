@@ -53,6 +53,9 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	usageRepo := repository.NewUsageRepository(db.Pool)
 	itemsRepo := repository.NewItemsRepository(db)
+	pagesRepo := repository.NewPagesRepository(db)
+	projectsRepo := repository.NewProjectsRepository(db)
+	pageItemsRepo := repository.NewPageItemsRepository(db)
 
 	tokenManager := auth.NewTokenManager(
 		cfg.JWT.AccessTokenSecret,
@@ -78,6 +81,9 @@ func main() {
 	defer redisClient.Close()
 
 	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage)
+	pagesService := services.NewPagesService(pagesRepo)
+	projectsService := services.NewProjectsService(projectsRepo)
+	pageItemsService := services.NewPageItemsService(pageItemsRepo)
 
 	logger.Info("ML client initialized")
 
@@ -86,6 +92,9 @@ func main() {
 		mlClient,
 		authService,
 		itemsService,
+		projectsService,
+		pagesService,
+		pageItemsService,
 		usageService,
 		db,
 		redisClient,

@@ -14,6 +14,9 @@ func SetupRouter(
 	mlClient services.MLClient,
 	authService services.AuthService,
 	itemsService services.ItemsService,
+	projectsService services.ProjectsService,
+	pagesService services.PagesService,
+	pageItemsService services.PageItemsService,
 	usageService services.UsageService,
 	dbHealth handlers.DBHealthChecker,
 	redisHealth handlers.RedisHealthChecker,
@@ -35,6 +38,9 @@ func SetupRouter(
 	mlHandler := handlers.NewMLHandler(mlClient)
 	authHandler := handlers.NewAuthHandler(authService)
 	itemsHandler := handlers.NewItemsHandler(itemsService)
+	projectsHandler := handlers.NewProjectsHandler(projectsService)
+	pagesHandler := handlers.NewPagesHandler(pagesService)
+	pageItemsHandler := handlers.NewPageItemsHandler(pageItemsService)
 
 	// Root level health checks
 	router.GET("/health", healthHandler.BasicHealth)
@@ -79,6 +85,30 @@ func SetupRouter(
 			itemsRoutes.GET("/usage", itemsHandler.GetUsage)
 			itemsRoutes.GET("/:id", itemsHandler.GetItem)
 			itemsRoutes.DELETE("/:id", itemsHandler.DeleteItem)
+		}
+
+		projectsRoutes := v1.Group("/projects")
+		projectsRoutes.Use(middleware.AuthMiddleware(tokenManager))
+		{
+			projectsRoutes.POST("", projectsHandler.CreateProject)
+			projectsRoutes.GET("", projectsHandler.ListProjects)
+			projectsRoutes.GET("/:id", projectsHandler.GetProject)
+			projectsRoutes.PATCH("/:id", projectsHandler.UpdateProject)
+			projectsRoutes.DELETE("/:id", projectsHandler.DeleteProject)
+		}
+
+		pagesRoutes := v1.Group("/pages")
+		pagesRoutes.Use(middleware.AuthMiddleware(tokenManager))
+		{
+			pagesRoutes.POST("", pagesHandler.CreatePage)
+			pagesRoutes.GET("", pagesHandler.ListPages)
+			pagesRoutes.GET("/:id", pagesHandler.GetPage)
+			pagesRoutes.PATCH("/:id", pagesHandler.UpdatePage)
+			pagesRoutes.DELETE("/:id", pagesHandler.DeletePage)
+			pagesRoutes.GET("/:id/items", pageItemsHandler.ListPageItems)
+			pagesRoutes.POST("/:id/items", pageItemsHandler.CreatePageItem)
+			pagesRoutes.PATCH("/:id/items/:item_id", pageItemsHandler.UpdatePageItem)
+			pagesRoutes.DELETE("/:id/items/:item_id", pageItemsHandler.DeletePageItem)
 		}
 
 		// Legacy endpoints (keep for backward compatibility, but add optional auth)

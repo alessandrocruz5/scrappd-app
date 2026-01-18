@@ -122,6 +122,9 @@ func TestItemsFlow_Integration(t *testing.T) {
 	userRepo := repository.NewUserRepository(db)
 	usageRepo := repository.NewUsageRepository(db.Pool)
 	itemsRepo := repository.NewItemsRepository(db)
+	pagesRepo := repository.NewPagesRepository(db)
+	projectsRepo := repository.NewProjectsRepository(db)
+	pageItemsRepo := repository.NewPageItemsRepository(db)
 
 	user := buildTestUser("items-flow@test.com", "itemsflow", models.TierFree)
 	err := userRepo.Create(context.Background(), user)
@@ -137,11 +140,17 @@ func TestItemsFlow_Integration(t *testing.T) {
 	storage := newInMemoryStorage()
 	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage)
 	authService := services.NewAuthService(userRepo, tokenManager)
+	pagesService := services.NewPagesService(pagesRepo)
+	projectsService := services.NewProjectsService(projectsRepo)
+	pageItemsService := services.NewPageItemsService(pageItemsRepo)
 
 	router := api.SetupRouter(
 		mlClient,
 		authService,
 		itemsService,
+		projectsService,
+		pagesService,
+		pageItemsService,
 		usageService,
 		db,
 		&stubRedis{},

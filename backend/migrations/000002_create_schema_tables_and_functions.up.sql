@@ -3,7 +3,7 @@
 -- AUTH SCHEMA - Users & Authentication
 -- ============================================
 
-CREATE TABLE auth.users (
+CREATE TABLE IF NOT EXISTS auth.users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE auth.users (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE TABLE auth.refresh_tokens (
+CREATE TABLE IF NOT EXISTS auth.refresh_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     token_hash VARCHAR(255) NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE auth.refresh_tokens (
     revoked_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE TABLE auth.password_resets (
+CREATE TABLE IF NOT EXISTS auth.password_resets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     token_hash VARCHAR(255) NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE auth.password_resets (
 -- CONTENT SCHEMA - Projects, Pages, Items
 -- ============================================
 
-CREATE TABLE content.projects (
+CREATE TABLE IF NOT EXISTS content.projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE content.projects (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE TABLE content.pages (
+CREATE TABLE IF NOT EXISTS content.pages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID NOT NULL REFERENCES content.projects(id) ON DELETE CASCADE,
     page_number INTEGER NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE content.pages (
     UNIQUE(project_id, page_number)
 );
 
-CREATE TABLE content.items (
+CREATE TABLE IF NOT EXISTS content.items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     
@@ -140,7 +140,7 @@ CREATE TABLE content.items (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE TABLE content.page_items (
+CREATE TABLE IF NOT EXISTS content.page_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     page_id UUID NOT NULL REFERENCES content.pages(id) ON DELETE CASCADE,
     item_id UUID NOT NULL REFERENCES content.items(id) ON DELETE CASCADE,
@@ -165,7 +165,7 @@ CREATE TABLE content.page_items (
 -- SOCIAL SCHEMA - Follows, Likes, Comments
 -- ============================================
 
-CREATE TABLE social.follows (
+CREATE TABLE IF NOT EXISTS social.follows (
     follower_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     following_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -173,14 +173,14 @@ CREATE TABLE social.follows (
     CHECK (follower_id != following_id)
 );
 
-CREATE TABLE social.project_likes (
+CREATE TABLE IF NOT EXISTS social.project_likes (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     project_id UUID NOT NULL REFERENCES content.projects(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, project_id)
 );
 
-CREATE TABLE social.project_comments (
+CREATE TABLE IF NOT EXISTS social.project_comments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID NOT NULL REFERENCES content.projects(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -195,7 +195,7 @@ CREATE TABLE social.project_comments (
 -- MARKETPLACE SCHEMA - Templates & Earnings
 -- ============================================
 
-CREATE TABLE marketplace.template_purchases (
+CREATE TABLE IF NOT EXISTS marketplace.template_purchases (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     buyer_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     project_id UUID NOT NULL REFERENCES content.projects(id) ON DELETE CASCADE,
@@ -207,7 +207,7 @@ CREATE TABLE marketplace.template_purchases (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE marketplace.creator_earnings (
+CREATE TABLE IF NOT EXISTS marketplace.creator_earnings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     
@@ -220,7 +220,7 @@ CREATE TABLE marketplace.creator_earnings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE marketplace.payouts (
+CREATE TABLE IF NOT EXISTS marketplace.payouts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     
@@ -238,7 +238,7 @@ CREATE TABLE marketplace.payouts (
 -- ANALYTICS SCHEMA - Views, Logs, Metrics
 -- ============================================
 
-CREATE TABLE analytics.project_views (
+CREATE TABLE IF NOT EXISTS analytics.project_views (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID NOT NULL REFERENCES content.projects(id) ON DELETE CASCADE,
     viewer_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -247,7 +247,7 @@ CREATE TABLE analytics.project_views (
     viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE analytics.usage_logs (
+CREATE TABLE IF NOT EXISTS analytics.usage_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     action_type VARCHAR(50) NOT NULL,
@@ -256,7 +256,7 @@ CREATE TABLE analytics.usage_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE analytics.daily_stats (
+CREATE TABLE IF NOT EXISTS analytics.daily_stats (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     stat_date DATE NOT NULL,
     
@@ -283,53 +283,53 @@ CREATE TABLE analytics.daily_stats (
 -- ============================================
 
 -- Auth schema indexes
-CREATE INDEX idx_users_email ON auth.users(email);
-CREATE INDEX idx_users_username ON auth.users(username);
-CREATE INDEX idx_users_subscription_tier ON auth.users(subscription_tier);
-CREATE INDEX idx_users_stripe_customer_id ON auth.users(stripe_customer_id);
-CREATE INDEX idx_users_deleted_at ON auth.users(deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX idx_refresh_tokens_user_id ON auth.refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_expires_at ON auth.refresh_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_users_email ON auth.users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON auth.users(username);
+CREATE INDEX IF NOT EXISTS idx_users_subscription_tier ON auth.users(subscription_tier);
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer_id ON auth.users(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON auth.users(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON auth.refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON auth.refresh_tokens(expires_at);
 
 -- Content schema indexes
-CREATE INDEX idx_projects_user_id ON content.projects(user_id);
-CREATE INDEX idx_projects_visibility ON content.projects(visibility);
-CREATE INDEX idx_projects_is_template ON content.projects(is_template) WHERE is_template = TRUE;
-CREATE INDEX idx_projects_created_at ON content.projects(created_at DESC);
-CREATE INDEX idx_projects_deleted_at ON content.projects(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON content.projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_visibility ON content.projects(visibility);
+CREATE INDEX IF NOT EXISTS idx_projects_is_template ON content.projects(is_template) WHERE is_template = TRUE;
+CREATE INDEX IF NOT EXISTS idx_projects_created_at ON content.projects(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON content.projects(deleted_at) WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_pages_project_id ON content.pages(project_id);
+CREATE INDEX IF NOT EXISTS idx_pages_project_id ON content.pages(project_id);
 
-CREATE INDEX idx_items_user_id ON content.items(user_id);
-CREATE INDEX idx_items_processing_status ON content.items(processing_status);
-CREATE INDEX idx_items_created_at ON content.items(created_at DESC);
-CREATE INDEX idx_items_deleted_at ON content.items(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_items_user_id ON content.items(user_id);
+CREATE INDEX IF NOT EXISTS idx_items_processing_status ON content.items(processing_status);
+CREATE INDEX IF NOT EXISTS idx_items_created_at ON content.items(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_items_deleted_at ON content.items(deleted_at) WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_page_items_page_id ON content.page_items(page_id);
-CREATE INDEX idx_page_items_item_id ON content.page_items(item_id);
-CREATE INDEX idx_page_items_z_index ON content.page_items(z_index);
+CREATE INDEX IF NOT EXISTS idx_page_items_page_id ON content.page_items(page_id);
+CREATE INDEX IF NOT EXISTS idx_page_items_item_id ON content.page_items(item_id);
+CREATE INDEX IF NOT EXISTS idx_page_items_z_index ON content.page_items(z_index);
 
 -- Social schema indexes
-CREATE INDEX idx_follows_follower_id ON social.follows(follower_id);
-CREATE INDEX idx_follows_following_id ON social.follows(following_id);
-CREATE INDEX idx_project_likes_project_id ON social.project_likes(project_id);
-CREATE INDEX idx_project_comments_project_id ON social.project_comments(project_id);
-CREATE INDEX idx_project_comments_parent_id ON social.project_comments(parent_comment_id);
+CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON social.follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_follows_following_id ON social.follows(following_id);
+CREATE INDEX IF NOT EXISTS idx_project_likes_project_id ON social.project_likes(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_comments_project_id ON social.project_comments(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_comments_parent_id ON social.project_comments(parent_comment_id);
 
 -- Marketplace schema indexes
-CREATE INDEX idx_template_purchases_buyer_id ON marketplace.template_purchases(buyer_id);
-CREATE INDEX idx_template_purchases_seller_id ON marketplace.template_purchases(seller_id);
-CREATE INDEX idx_template_purchases_project_id ON marketplace.template_purchases(project_id);
-CREATE INDEX idx_payouts_user_id ON marketplace.payouts(user_id);
-CREATE INDEX idx_payouts_status ON marketplace.payouts(status);
+CREATE INDEX IF NOT EXISTS idx_template_purchases_buyer_id ON marketplace.template_purchases(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_template_purchases_seller_id ON marketplace.template_purchases(seller_id);
+CREATE INDEX IF NOT EXISTS idx_template_purchases_project_id ON marketplace.template_purchases(project_id);
+CREATE INDEX IF NOT EXISTS idx_payouts_user_id ON marketplace.payouts(user_id);
+CREATE INDEX IF NOT EXISTS idx_payouts_status ON marketplace.payouts(status);
 
 -- Analytics schema indexes
-CREATE INDEX idx_project_views_project_id ON analytics.project_views(project_id);
-CREATE INDEX idx_project_views_viewed_at ON analytics.project_views(viewed_at DESC);
-CREATE INDEX idx_usage_logs_user_id ON analytics.usage_logs(user_id);
-CREATE INDEX idx_usage_logs_action_type ON analytics.usage_logs(action_type);
-CREATE INDEX idx_usage_logs_created_at ON analytics.usage_logs(created_at DESC);
-CREATE INDEX idx_daily_stats_stat_date ON analytics.daily_stats(stat_date DESC);
+CREATE INDEX IF NOT EXISTS idx_project_views_project_id ON analytics.project_views(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_views_viewed_at ON analytics.project_views(viewed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_user_id ON analytics.usage_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_action_type ON analytics.usage_logs(action_type);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_created_at ON analytics.usage_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_stats_stat_date ON analytics.daily_stats(stat_date DESC);
 
 -- ============================================
 -- TRIGGERS FOR AUTO-UPDATE TIMESTAMPS
@@ -344,29 +344,71 @@ END;
 $$ language 'plpgsql';
 
 -- Auth triggers
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_users_updated_at') THEN
+        CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON auth.users
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
 
 -- Content triggers
-CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON content.projects
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_projects_updated_at') THEN
+        CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON content.projects
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
 
-CREATE TRIGGER update_pages_updated_at BEFORE UPDATE ON content.pages
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_pages_updated_at') THEN
+        CREATE TRIGGER update_pages_updated_at BEFORE UPDATE ON content.pages
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
 
-CREATE TRIGGER update_items_updated_at BEFORE UPDATE ON content.items
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_items_updated_at') THEN
+        CREATE TRIGGER update_items_updated_at BEFORE UPDATE ON content.items
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
 
-CREATE TRIGGER update_page_items_updated_at BEFORE UPDATE ON content.page_items
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_page_items_updated_at') THEN
+        CREATE TRIGGER update_page_items_updated_at BEFORE UPDATE ON content.page_items
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
 
 -- Social triggers
-CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON social.project_comments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_comments_updated_at') THEN
+        CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON social.project_comments
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
 
 -- Marketplace triggers
-CREATE TRIGGER update_earnings_updated_at BEFORE UPDATE ON marketplace.creator_earnings
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_earnings_updated_at') THEN
+        CREATE TRIGGER update_earnings_updated_at BEFORE UPDATE ON marketplace.creator_earnings
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END;
+$$;
 
 -- ============================================
 -- HELPER FUNCTIONS
@@ -391,11 +433,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER follow_insert_trigger AFTER INSERT ON social.follows
-    FOR EACH ROW EXECUTE FUNCTION increment_follower_counts();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'follow_insert_trigger') THEN
+        CREATE TRIGGER follow_insert_trigger AFTER INSERT ON social.follows
+            FOR EACH ROW EXECUTE FUNCTION increment_follower_counts();
+    END IF;
+END;
+$$;
 
-CREATE TRIGGER follow_delete_trigger AFTER DELETE ON social.follows
-    FOR EACH ROW EXECUTE FUNCTION decrement_follower_counts();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'follow_delete_trigger') THEN
+        CREATE TRIGGER follow_delete_trigger AFTER DELETE ON social.follows
+            FOR EACH ROW EXECUTE FUNCTION decrement_follower_counts();
+    END IF;
+END;
+$$;
 
 -- Function to increment project like counts
 CREATE OR REPLACE FUNCTION increment_like_count()
@@ -414,8 +468,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER like_insert_trigger AFTER INSERT ON social.project_likes
-    FOR EACH ROW EXECUTE FUNCTION increment_like_count();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'like_insert_trigger') THEN
+        CREATE TRIGGER like_insert_trigger AFTER INSERT ON social.project_likes
+            FOR EACH ROW EXECUTE FUNCTION increment_like_count();
+    END IF;
+END;
+$$;
 
-CREATE TRIGGER like_delete_trigger AFTER DELETE ON social.project_likes
-    FOR EACH ROW EXECUTE FUNCTION decrement_like_count();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'like_delete_trigger') THEN
+        CREATE TRIGGER like_delete_trigger AFTER DELETE ON social.project_likes
+            FOR EACH ROW EXECUTE FUNCTION decrement_like_count();
+    END IF;
+END;
+$$;
