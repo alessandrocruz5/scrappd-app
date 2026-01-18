@@ -76,6 +76,17 @@ test-services: ## Run service tests
 test-utils: ## Run utils tests
 	$(GOTEST) -v ./pkg/utils/...
 
+test-storage: ## Run storage unit tests (no R2 required)
+	$(GOTEST) -v ./internal/services/ -run "Test.*Storage"
+
+test-storage-integration: ## Run storage integration tests (requires R2)
+	@echo "🧪 Running storage integration tests (requires R2 credentials)..."
+	@echo "⚠️  Make sure R2 credentials are set in environment variables"
+	$(GOTEST) -tags=integration -v ./internal/services/ -run "TestIntegration" -timeout 5m
+
+benchmark-storage: ## Run storage benchmarks
+	$(GOTEST) -bench=BenchmarkMockStorage -benchmem ./internal/services/
+
 lint: ## Run linter (requires golangci-lint)
 	@if command -v golangci-lint > /dev/null; then \
 		golangci-lint run; \
