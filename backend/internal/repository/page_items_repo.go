@@ -72,7 +72,7 @@ func (r *pageItemsRepository) Create(ctx context.Context, userID uuid.UUID, item
 		item.Rotation,
 		item.ZIndex,
 		item.Opacity,
-		item.Filters,
+		jsonRawOrNil(item.Filters),
 		userID,
 	).Scan(&item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
@@ -194,7 +194,7 @@ func (r *pageItemsRepository) Update(ctx context.Context, userID uuid.UUID, upda
 		update.Rotation,
 		update.ZIndex,
 		update.Opacity,
-		update.Filters,
+		jsonRawOrNil(update.Filters),
 		userID,
 	).Scan(
 		&item.ID,

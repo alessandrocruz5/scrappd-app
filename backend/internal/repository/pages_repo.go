@@ -43,16 +43,16 @@ func (r *pagesRepository) Create(ctx context.Context, userID uuid.UUID, page *mo
 		SELECT
 			$1,
 			p.id,
-			$2,
 			$3,
 			$4,
 			$5,
 			$6,
 			$7,
 			$8,
-			$9
+			$9,
+			$10
 		FROM content.projects p
-		WHERE p.id = $2 AND p.user_id = $10
+		WHERE p.id = $2 AND p.user_id = $11
 		RETURNING created_at, updated_at
 	`
 
@@ -68,7 +68,7 @@ func (r *pagesRepository) Create(ctx context.Context, userID uuid.UUID, page *mo
 		page.BackgroundColor,
 		page.BackgroundImageURL,
 		page.BackgroundPattern,
-		page.LayoutTemplate,
+		jsonRawOrNil(page.LayoutTemplate),
 		userID,
 	).Scan(&page.CreatedAt, &page.UpdatedAt)
 	if err != nil {
@@ -244,7 +244,7 @@ func (r *pagesRepository) Update(ctx context.Context, userID uuid.UUID, update *
 		update.BackgroundColor,
 		update.BackgroundImageURL,
 		update.BackgroundPattern,
-		update.LayoutTemplate,
+		jsonRawOrNil(update.LayoutTemplate),
 		userID,
 	).Scan(
 		&page.ID,
@@ -269,6 +269,7 @@ func (r *pagesRepository) Update(ctx context.Context, userID uuid.UUID, update *
 
 	return page, nil
 }
+
 
 func (r *pagesRepository) Delete(ctx context.Context, userID, pageID uuid.UUID) error {
 	query := `
