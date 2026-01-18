@@ -114,6 +114,7 @@ type MockStorage struct {
 	GetURLFunc        func(ctx context.Context, key string, expiry time.Duration) (string, error)
 	ExistsFunc        func(ctx context.Context, key string) (bool, error)
 	ListFunc          func(ctx context.Context, prefix string) ([]string, error)
+	HealthCheckFunc   func(ctx context.Context) error
 }
 
 func (m *MockStorage) Upload(ctx context.Context, file io.Reader, filename string, contentType string) (string, error) {
@@ -163,6 +164,13 @@ func (m *MockStorage) List(ctx context.Context, prefix string) ([]string, error)
 		return m.ListFunc(ctx, prefix)
 	}
 	return nil, nil
+}
+
+func (m *MockStorage) HealthCheck(ctx context.Context) error {
+	if m.HealthCheckFunc != nil {
+		return m.HealthCheckFunc(ctx)
+	}
+	return nil
 }
 
 // TestMockStorage tests the mock storage implementation

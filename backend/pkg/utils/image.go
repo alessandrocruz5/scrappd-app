@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"strings"
 )
@@ -120,11 +121,13 @@ func GetImageFormat(base64Data string) string {
 
 // FileToBase64 converts a multipart file to base64 string
 func FileToBase64(file multipart.File, size int64) (string, error) {
-	buffer := make([]byte, size)
-	n, err := file.Read(buffer)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
+	if len(data) == 0 {
+		return "", fmt.Errorf("failed to read file: empty data")
+	}
 
-	return base64.StdEncoding.EncodeToString(buffer[:n]), nil
+	return base64.StdEncoding.EncodeToString(data), nil
 }

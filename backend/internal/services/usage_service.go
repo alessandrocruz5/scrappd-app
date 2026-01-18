@@ -165,7 +165,7 @@ func (s *usageService) GetRateLimitHeaders(stats *models.UsageStats) map[string]
 		headers["X-RateLimit-Limit"] = "unlimited"
 		headers["X-RateLimit-Remaining"] = "unlimited"
 	} else {
-		headers["X-RateLimit-Limit"] = fmt.Sprintf("%d", *stats.ItemsLimt)
+		headers["X-RateLimit-Limit"] = fmt.Sprintf("%d", *stats.ItemsLimit)
 		headers["X-RateLimit-Remaining"] = fmt.Sprintf("%d", *stats.ItemsRemaining)
 	}
 
@@ -178,7 +178,7 @@ func (s *usageService) GetRateLimitHeaders(stats *models.UsageStats) map[string]
 func (s *usageService) buildUsageStats(usage *models.UsageTracking, tier models.SubscriptionTier) *models.UsageStats {
 	stats := &models.UsageStats{
 		ItemsProcessed: usage.ItemsProcessed,
-		ItemsLimt:      usage.ItemsLimit,
+		ItemsLimit:     usage.ItemsLimit,
 		PeriodStart:    usage.PeriodStart,
 		PeriodEnd:      usage.PeriodEnd,
 		IsUnlimited:    tier.IsUnlimited(),

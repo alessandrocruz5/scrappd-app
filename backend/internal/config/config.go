@@ -126,6 +126,13 @@ func Load() (*Config, error) {
 		config.Database.SSLMode,
 	)
 
+	if config.Server.Environment != "development" {
+		if config.JWT.AccessTokenSecret == "your-secret-key-change-in-production" ||
+			config.JWT.RefreshTokenSecret == "your-refresh-secret-change-in-production" {
+			return nil, fmt.Errorf("JWT secrets must be set for non-development environments")
+		}
+	}
+
 	return config, nil
 }
 

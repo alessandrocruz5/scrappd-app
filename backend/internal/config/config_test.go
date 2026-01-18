@@ -40,6 +40,8 @@ func TestLoad_WithEnvironmentVariables(t *testing.T) {
 	os.Setenv("DB_HOST", "db.example.com")
 	os.Setenv("ML_SERVICE_URL", "http://ml-service:8000")
 	os.Setenv("ML_SERVICE_TIMEOUT", "60s")
+	os.Setenv("JWT_ACCESS_SECRET", "test-access-secret")
+	os.Setenv("JWT_REFRESH_SECRET", "test-refresh-secret")
 	defer os.Clearenv()
 
 	cfg, err := Load()
@@ -55,7 +57,7 @@ func TestLoad_WithEnvironmentVariables(t *testing.T) {
 func TestDatabaseDSN(t *testing.T) {
 	os.Clearenv()
 	os.Setenv("DB_HOST", "testhost")
-	os.Setenv("DB_PORT", "5433")
+	os.Setenv("DB_PORT", "5432")
 	os.Setenv("DB_USER", "testuser")
 	os.Setenv("DB_PASSWORD", "testpass")
 	os.Setenv("DB_NAME", "testdb")
@@ -64,6 +66,6 @@ func TestDatabaseDSN(t *testing.T) {
 	cfg, err := Load()
 	require.NoError(t, err)
 
-	expectedDSN := "host=testhost port=5433 user=testuser password=testpass dbname=testdb sslmode=disable"
+	expectedDSN := "host=testhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable"
 	assert.Equal(t, expectedDSN, cfg.Database.DSN)
 }

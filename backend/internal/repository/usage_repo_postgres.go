@@ -37,7 +37,7 @@ func (r *usageRepository) GetOrCreateCurrent(ctx context.Context, userID uuid.UU
 	limit := tier.GetItemsLimit()
 
 	query := `
-		INSERT INTO usage_tracking (user_id, period_start, period_end, items_processed, items_limit)
+		INSERT INTO content.usage_tracking (user_id, period_start, period_end, items_processed, items_limit)
 		VALUES ($1, $2, $3, 0, $4)
 		RETURNING id, user_id, period_start, period_end, items_processed, items_limit, created_at, updated_at
 	`
@@ -66,7 +66,7 @@ func (r *usageRepository) IncrementUsage(ctx context.Context, userID uuid.UUID) 
 	periodStart, periodEnd := GetCurrentPeriod()
 
 	query := `
-		UPDATE usage_tracking
+		UPDATE content.usage_tracking
 		SET items_processed = items_processed + 1,
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE user_id = $1 
@@ -92,7 +92,7 @@ func (r *usageRepository) GetCurrentUsage(ctx context.Context, userID uuid.UUID)
 
 	query := `
 		SELECT id, user_id, period_start, period_end, items_processed, items_limit, created_at, updated_at
-		FROM usage_tracking
+		FROM content.usage_tracking
 		WHERE user_id = $1 
 		AND period_start = $2
 		AND period_end = $3
@@ -125,7 +125,7 @@ func (r *usageRepository) UpdateLimit(ctx context.Context, userID uuid.UUID, lim
 	periodStart, periodEnd := GetCurrentPeriod()
 
 	query := `
-		UPDATE usage_tracking
+		UPDATE content.usage_tracking
 		SET items_limit = $1,
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE user_id = $2 
@@ -150,7 +150,7 @@ func (r *usageRepository) ResetExpiredPeriods(ctx context.Context) (int, error) 
 	periodStart, periodEnd := GetCurrentPeriod()
 
 	query := `
-		INSERT INTO usage_tracking (user_id, period_start, period_end, items_processed, items_limit)
+		INSERT INTO content.usage_tracking (user_id, period_start, period_end, items_processed, items_limit)
 		SELECT 
 			u.id as user_id,
 			$1 as period_start,
@@ -162,7 +162,7 @@ func (r *usageRepository) ResetExpiredPeriods(ctx context.Context) (int, error) 
 			END as items_limit
 		FROM users u
 		WHERE NOT EXISTS (
-			SELECT 1 FROM usage_tracking ut
+			SELECT 1 FROM content.usage_tracking ut
 			WHERE ut.user_id = u.id
 			AND ut.period_start = $1
 			AND ut.period_end = $2
@@ -186,7 +186,7 @@ func (r *usageRepository) GetUsageHistory(ctx context.Context, userID uuid.UUID,
 
 	query := `
 		SELECT id, user_id, period_start, period_end, items_processed, items_limit, created_at, updated_at
-		FROM usage_tracking
+		FROM content.usage_tracking
 		WHERE user_id = $1
 		ORDER BY period_start DESC
 		LIMIT $2

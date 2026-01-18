@@ -16,7 +16,7 @@ func setupTestDB(t *testing.T) *database.DB {
 
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://scrappd_app:scrappd_go@localhost:5432/scrappd?sslmode=disable"
+		dsn = "postgres://scrappd_app:scrappd-go@localhost:5432/scrappd?sslmode=disable"
 	}
 
 	pool, err := pgxpool.New(context.Background(), dsn)
@@ -47,9 +47,9 @@ func cleanupTestDB(t *testing.T, db *database.DB) {
 	ctx := context.Background()
 
 	// Clean up test data in reverse order of dependencies
-	_, _ = db.Pool.Exec(ctx, "DELETE FROM usage_tracking")
-	_, _ = db.Pool.Exec(ctx, "DELETE FROM items")
-	_, _ = db.Pool.Exec(ctx, "DELETE FROM users")
+	_, _ = db.Pool.Exec(ctx, "DELETE FROM content.usage_tracking")
+	_, _ = db.Pool.Exec(ctx, "DELETE FROM content.items")
+	_, _ = db.Pool.Exec(ctx, "DELETE FROM auth.users")
 
 	db.Pool.Close()
 }

@@ -117,6 +117,14 @@ dev-with-air: install-air dev ## Install air and run with hot reload
 
 .PHONY: migrate-up migrate-down migrate-force migrate-create
 
+# Migration connection defaults (override in .env if needed)
+MIGRATE_DB_USER ?= scrappd_admin
+MIGRATE_DB_PASSWORD ?= scrappd-admin
+MIGRATE_DB_HOST ?= $(DB_HOST)
+MIGRATE_DB_PORT ?= $(DB_PORT)
+MIGRATE_DB_NAME ?= $(DB_NAME)
+MIGRATE_TABLE ?= public.schema_migrations
+
 # Simple migration commands with hardcoded values for local dev
 migrate-up-local:
 	@echo "Running migrations..."
@@ -133,17 +141,17 @@ migrate-down-local:
 # Run all pending migrations
 migrate-up:
 	@echo "Running migrations..."
-	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" up
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" up
 
 # Rollback the last migration
 migrate-down:
 	@echo "Rolling back last migration..."
-	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" down 1
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" down 1
 
 # Force migration to specific version (use with caution)
 migrate-force:
 	@echo "Forcing migration to version $(VERSION)..."
-	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" force $(VERSION)
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" force $(VERSION)
 
 # Create a new migration file
 migrate-create:
@@ -153,7 +161,7 @@ migrate-create:
 # Check migration status
 migrate-status:
 	@echo "Checking migration status..."
-	migrate -path migrations -database "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" version
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" version
 
 # Repository Tests
 
@@ -197,23 +205,6 @@ services-logs: ## View all service logs
 
 services-restart: ## Restart all services
 	docker-compose restart
-
-# ==============================================
-# MIGRATION COMMANDS (updated)
-# ==============================================
-
-migrate-up: db-health ## Run database migrations
-	@echo "📦 Running migrations..."
-	docker-compose exec postgres psql -U scrappd_admin -d scrappd -f /docker-entrypoint-initdb.d/migration.sql
-	@echo "✅ Migrations complete"
-
-migrate-create: ## Create new migration file (NAME=migration_name)
-	@if [ -z "$(NAME)" ]; then \
-		echo "❌ Please provide migration name: make migrate-create NAME=add_users"; \
-		exit 1; \
-	fi
-	@echo "-- Migration: $(NAME)" > ../database/migrations/$$(date +%Y%m%d%H%M%S)_$(NAME).sql
-	@echo "✅ Created migration: ../database/migrations/$$(date +%Y%m%d%H%M%S)_$(NAME).sql"
 
 # ==============================================
 # SETUP COMMANDS

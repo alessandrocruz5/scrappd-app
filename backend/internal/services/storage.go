@@ -38,6 +38,9 @@ type Storage interface {
 
 	// List lists files with a given prefix
 	List(ctx context.Context, prefix string) ([]string, error)
+
+	// HealthCheck validates storage connectivity
+	HealthCheck(ctx context.Context) error
 }
 
 // R2Storage implements the Storage interface using Cloudflare R2 (S3-compatible)
@@ -195,6 +198,18 @@ func (r *R2Storage) Delete(ctx context.Context, key string) error {
 	}
 
 	r.logger.WithField("key", key).Info("Successfully deleted file from R2")
+	return nil
+}
+
+// HealthCheck validates access to the configured bucket.
+func (r *R2Storage) HealthCheck(ctx context.Context) error {
+	_, err := r.client.HeadBucket(ctx, &s3.HeadBucketInput{
+		Bucket: aws.String(r.bucketName),
+	})
+	if err != nil {
+		r.logger.WithError(err).Error("Storage health check failed")
+		return fmt.Errorf("storage health check failed: %w", err)
+	}
 	return nil
 }
 

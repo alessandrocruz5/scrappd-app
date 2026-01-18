@@ -14,14 +14,26 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- CREATE ROLES (Principle of Least Privilege)
 -- ============================================
 
--- Application role (your Go backend connects as this)
-CREATE ROLE scrappd_app WITH LOGIN PASSWORD 'scrappd-go';
+-- Create roles only if they do not exist.
+-- This block also guards against insufficient privileges when running migrations.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'scrappd_app') THEN
+        CREATE ROLE scrappd_app WITH LOGIN PASSWORD 'scrappd-go';
+    END IF;
 
--- Read-only role (for analytics, reporting, etc.)
-CREATE ROLE scrappd_readonly WITH LOGIN PASSWORD 'scrappd-viewer';
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'scrappd_readonly') THEN
+        CREATE ROLE scrappd_readonly WITH LOGIN PASSWORD 'scrappd-viewer';
+    END IF;
 
--- Admin role (for migrations, maintenance)
-CREATE ROLE scrappd_admin WITH LOGIN PASSWORD 'scrappd-admin' SUPERUSER;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'scrappd_admin') THEN
+        CREATE ROLE scrappd_admin WITH LOGIN PASSWORD 'scrappd-admin' SUPERUSER;
+    END IF;
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE NOTICE 'Skipping role creation due to insufficient privileges';
+END
+$$;
 
 -- ============================================
 -- CREATE SCHEMAS
