@@ -5,19 +5,23 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/constants/theme_constants.dart';
 import 'data/services/api_service.dart';
+import 'data/services/auth_service.dart';
+import 'data/services/secure_storage_service.dart';
+import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/image_provider.dart';
+import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Load environment variables
   try {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint('No .env file found, using defaults');
   }
-  
+
   // Set portrait orientation only
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -43,11 +47,26 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Services
+        Provider<SecureStorageService>(
+          create: (_) => SecureStorageService(),
+        ),
         Provider<ApiService>(
           create: (_) => ApiService(),
         ),
-        
+        ProxyProvider<SecureStorageService, AuthService>(
+          update: (_, storage, __) => AuthService(storage),
+        ),
+
         // Providers
+        ChangeNotifierProxyProvider2<AuthService, SecureStorageService,
+            AuthProvider>(
+          create: (context) => AuthProvider(
+            context.read<AuthService>(),
+            context.read<SecureStorageService>(),
+          ),
+          update: (_, authService, storage, previous) =>
+              previous ?? AuthProvider(authService, storage),
+        ),
         ChangeNotifierProvider<ImageProcessingProvider>(
           create: (context) => ImageProcessingProvider(
             context.read<ApiService>(),
@@ -75,12 +94,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkHealthAndNavigate();
+    _initializeApp();
   }
 
-  Future<void> _checkHealthAndNavigate() async {
+  Future<void> _initializeApp() async {
     // Show splash for minimum 2 seconds
     await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
 
     // Check API health
     final apiService = context.read<ApiService>();
@@ -90,30 +111,54 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!isHealthy) {
       // Show error dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('Connection Error'),
-          content: const Text(
-            'Cannot connect to the server. Please make sure the backend is running.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _checkHealthAndNavigate();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
+      _showConnectionError();
+      return;
+    }
+
+    // Initialize auth state
+    final authProvider = context.read<AuthProvider>();
+    await authProvider.initialize();
+
+    if (!mounted) return;
+
+    // Navigate based on auth state
+    _navigateBasedOnAuth();
+  }
+
+  void _showConnectionError() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Connection Error'),
+        content: const Text(
+          'Cannot connect to the server. Please make sure the backend is running.',
         ),
-      );
-    } else {
-      // Navigate to home
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _initializeApp();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateBasedOnAuth() {
+    final authProvider = context.read<AuthProvider>();
+
+    if (authProvider.isAuthenticated) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
       );
     }
   }
@@ -161,5 +206,52 @@ class _SplashScreenState extends State<SplashScreen> {
         ),
       ),
     );
+  }
+}
+
+/// Wrapper that listens to auth state changes and navigates accordingly
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    // Listen to auth changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      authProvider.addListener(_onAuthStateChanged);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Remove listener when disposed
+    try {
+      final authProvider = context.read<AuthProvider>();
+      authProvider.removeListener(_onAuthStateChanged);
+    } catch (_) {}
+    super.dispose();
+  }
+
+  void _onAuthStateChanged() {
+    if (!mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isAuthenticated) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const LoginScreen();
   }
 }

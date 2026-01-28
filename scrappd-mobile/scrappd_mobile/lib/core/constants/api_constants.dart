@@ -14,6 +14,22 @@ class ApiConstants {
   static const String apiVersion = '/api/v1';
   static const String healthCheck = '/health';
   static const String removeBackground = '$apiVersion/ml/process';
+
+  // Auth endpoints
+  static const String authRegister = '$apiVersion/auth/register';
+  static const String authLogin = '$apiVersion/auth/login';
+  static const String authRefresh = '$apiVersion/auth/refresh';
+  static const String authLogout = '$apiVersion/auth/logout';
+  static const String authMe = '$apiVersion/auth/me';
+
+  // Projects endpoints
+  static const String projects = '$apiVersion/projects';
+
+  // Pages endpoints
+  static const String pages = '$apiVersion/pages';
+
+  // Items endpoints
+  static const String items = '$apiVersion/items';
   
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 120);
