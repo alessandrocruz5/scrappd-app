@@ -6,10 +6,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/theme_constants.dart';
 import 'data/services/api_service.dart';
 import 'data/services/auth_service.dart';
+import 'data/services/items_service.dart';
+import 'data/services/page_items_service.dart';
 import 'data/services/pages_service.dart';
 import 'data/services/projects_service.dart';
 import 'data/services/secure_storage_service.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/canvas_provider.dart';
 import 'presentation/providers/image_provider.dart';
 import 'presentation/providers/pages_provider.dart';
 import 'presentation/providers/projects_provider.dart';
@@ -66,6 +69,12 @@ class MyApp extends StatelessWidget {
         ProxyProvider<SecureStorageService, PagesService>(
           update: (_, storage, __) => PagesService(storage),
         ),
+        ProxyProvider<SecureStorageService, PageItemsService>(
+          update: (_, storage, __) => PageItemsService(storage),
+        ),
+        ProxyProvider<SecureStorageService, ItemsService>(
+          update: (_, storage, __) => ItemsService(storage),
+        ),
 
         // Providers
         ChangeNotifierProxyProvider2<AuthService, SecureStorageService,
@@ -89,6 +98,12 @@ class MyApp extends StatelessWidget {
             context.read<PagesService>(),
           ),
           update: (_, service, previous) => previous ?? PagesProvider(service),
+        ),
+        ChangeNotifierProxyProvider<PageItemsService, CanvasProvider>(
+          create: (context) => CanvasProvider(
+            context.read<PageItemsService>(),
+          ),
+          update: (_, service, previous) => previous ?? CanvasProvider(service),
         ),
         ChangeNotifierProvider<ImageProcessingProvider>(
           create: (context) => ImageProcessingProvider(

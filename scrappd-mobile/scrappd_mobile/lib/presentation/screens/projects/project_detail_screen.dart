@@ -6,6 +6,7 @@ import '../../../data/models/page.dart';
 import '../../providers/pages_provider.dart';
 import '../../providers/projects_provider.dart';
 import '../../widgets/page_thumbnail.dart';
+import '../canvas/canvas_editor_screen.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final Project project;
@@ -33,6 +34,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PagesProvider>().loadPages(_project.id);
     });
+  }
+
+  void _navigateToCanvasEditor(ScrapbookPage page) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CanvasEditorScreen(page: page),
+      ),
+    );
   }
 
   Future<void> _handleRefresh() async {
@@ -75,7 +85,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
                         if (page != null && context.mounted) {
                           Navigator.pop(context);
-                          // TODO: Navigate to canvas editor
+                          _navigateToCanvasEditor(page);
                         }
                       },
                 child: isCreating
@@ -105,7 +115,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               title: const Text('Edit Page'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Navigate to canvas editor
+                _navigateToCanvasEditor(page);
               },
             ),
             ListTile(
@@ -303,9 +313,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           final page = provider.pages[index];
                           return PageThumbnail(
                             page: page,
-                            onTap: () {
-                              // TODO: Navigate to canvas editor
-                            },
+                            onTap: () => _navigateToCanvasEditor(page),
                             onLongPress: () => _showPageOptions(page),
                           );
                         },
