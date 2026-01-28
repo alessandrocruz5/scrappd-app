@@ -6,11 +6,15 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/theme_constants.dart';
 import 'data/services/api_service.dart';
 import 'data/services/auth_service.dart';
+import 'data/services/pages_service.dart';
+import 'data/services/projects_service.dart';
 import 'data/services/secure_storage_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/image_provider.dart';
+import 'presentation/providers/pages_provider.dart';
+import 'presentation/providers/projects_provider.dart';
 import 'presentation/screens/auth/login_screen.dart';
-import 'presentation/screens/home_screen.dart';
+import 'presentation/screens/projects/projects_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +60,12 @@ class MyApp extends StatelessWidget {
         ProxyProvider<SecureStorageService, AuthService>(
           update: (_, storage, __) => AuthService(storage),
         ),
+        ProxyProvider<SecureStorageService, ProjectsService>(
+          update: (_, storage, __) => ProjectsService(storage),
+        ),
+        ProxyProvider<SecureStorageService, PagesService>(
+          update: (_, storage, __) => PagesService(storage),
+        ),
 
         // Providers
         ChangeNotifierProxyProvider2<AuthService, SecureStorageService,
@@ -66,6 +76,19 @@ class MyApp extends StatelessWidget {
           ),
           update: (_, authService, storage, previous) =>
               previous ?? AuthProvider(authService, storage),
+        ),
+        ChangeNotifierProxyProvider<ProjectsService, ProjectsProvider>(
+          create: (context) => ProjectsProvider(
+            context.read<ProjectsService>(),
+          ),
+          update: (_, service, previous) =>
+              previous ?? ProjectsProvider(service),
+        ),
+        ChangeNotifierProxyProvider<PagesService, PagesProvider>(
+          create: (context) => PagesProvider(
+            context.read<PagesService>(),
+          ),
+          update: (_, service, previous) => previous ?? PagesProvider(service),
         ),
         ChangeNotifierProvider<ImageProcessingProvider>(
           create: (context) => ImageProcessingProvider(
@@ -153,7 +176,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (authProvider.isAuthenticated) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const ProjectsListScreen()),
       );
     } else {
       Navigator.pushReplacement(
@@ -191,7 +214,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               SizedBox(height: AppTheme.spacing8),
               Text(
-                'AI Background Remover',
+                'Digital Scrapbooking',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.white70,
@@ -245,7 +268,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (authProvider.isAuthenticated) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const ProjectsListScreen()),
       );
     }
   }
