@@ -1,4 +1,11 @@
+
 .PHONY: help run test test-coverage build clean dev lint install-tools install-air
+
+# Load environment variables from .env file
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
 
 # Variables
 BINARY_NAME=scrappd-api
@@ -6,6 +13,7 @@ GO=go
 GOTEST=$(GO) test
 GOBUILD=$(GO) build
 GOCLEAN=$(GO) clean
+PROJECT_ROOT := $(shell pwd)
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -68,6 +76,17 @@ test-services: ## Run service tests
 test-utils: ## Run utils tests
 	$(GOTEST) -v ./pkg/utils/...
 
+test-storage: ## Run storage unit tests (no R2 required)
+	$(GOTEST) -v ./internal/services/ -run "Test.*Storage"
+
+test-storage-integration: ## Run storage integration tests (requires R2)
+	@echo "🧪 Running storage integration tests (requires R2 credentials)..."
+	@echo "⚠️  Make sure R2 credentials are set in environment variables"
+	$(GOTEST) -tags=integration -v ./internal/services/ -run "TestIntegration" -timeout 5m
+
+benchmark-storage: ## Run storage benchmarks
+	$(GOTEST) -bench=BenchmarkMockStorage -benchmem ./internal/services/
+
 lint: ## Run linter (requires golangci-lint)
 	@if command -v golangci-lint > /dev/null; then \
 		golangci-lint run; \
@@ -94,90 +113,85 @@ docker-run: ## Run Docker container
 quick-start: install-deps dev-manual ## Quick start without air
 dev-with-air: install-air dev ## Install air and run with hot reload
 
-# ==============================================
-# DOCKER COMPOSE COMMANDS
-# ==============================================
+# Database Migration Commands
 
-db-up: ## Start PostgreSQL and Redis
-	@echo "🚀 Starting database services..."
-	docker-compose up -d postgres redis
-	@echo "⏳ Waiting for PostgreSQL to be ready..."
-	@sleep 5
-	@echo "✅ Database services started"
+.PHONY: migrate-up migrate-down migrate-force migrate-create
 
-db-down: ## Stop database services
-	@echo "🛑 Stopping database services..."
-	docker-compose down
-	@echo "✅ Database services stopped"
+# Migration connection defaults (override in .env if needed)
+MIGRATE_DB_USER ?= scrappd_admin
+MIGRATE_DB_PASSWORD ?= scrappd-admin
+MIGRATE_DB_HOST ?= $(DB_HOST)
+MIGRATE_DB_PORT ?= $(DB_PORT)
+MIGRATE_DB_NAME ?= $(DB_NAME)
+MIGRATE_TABLE ?= public.schema_migrations
 
-db-logs: ## View database logs
-	docker-compose logs -f postgres redis
+# Simple migration commands with hardcoded values for local dev
+migrate-up-local:
+	@echo "Running migrations..."
+	migrate -path migrations -database "postgresql://apa@localhost:5432/scrappd?sslmode=disable" up
 
-db-ps: ## List running database containers
-	docker-compose ps
+migrate-status-local:
+	@echo "Checking migration status..."
+	migrate -path migrations -database "postgresql://apa@localhost:5432/scrappd?sslmode=disable" version
 
-db-shell: ## Open PostgreSQL shell
-	docker-compose exec postgres psql -U scrappd_app -d scrappd
+migrate-down-local:
+	@echo "Rolling back last migration..."
+	migrate -path migrations -database "postgresql://apa@localhost:5432/scrappd?sslmode=disable" down 1
 
-db-shell-admin: ## Open PostgreSQL shell as admin
-	docker-compose exec postgres psql -U postgres -d scrappd
+# Run all pending migrations
+migrate-up:
+	@echo "Running migrations..."
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" up
 
-db-health: ## Check if database is ready
-	@docker-compose exec postgres pg_isready -U postgres -d scrappd || (echo "❌ Database not ready" && exit 1)
-	@echo "✅ Database is ready"
+# Rollback the last migration
+migrate-down:
+	@echo "Rolling back last migration..."
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" down 1
 
-db-reset: db-down ## Reset database (removes all data)
-	@echo "⚠️  This will DELETE all data!"
-	@read -p "Are you sure? Type 'yes' to confirm: " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted" && exit 1)
-	docker-compose down -v
-	docker-compose up -d postgres redis
-	@echo "⏳ Waiting for database..."
-	@sleep 5
-	@echo "✅ Database reset complete"
+# Force migration to specific version (use with caution)
+migrate-force:
+	@echo "Forcing migration to version $(VERSION)..."
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" force $(VERSION)
 
-db-clean: ## Remove all data from database (keeps structure)
-	@echo "⚠️  This will DELETE all data but keep tables!"
-	@read -p "Are you sure? Type 'yes' to confirm: " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted" && exit 1)
-	docker-compose exec postgres psql -U scrappd_admin -d scrappd -c "TRUNCATE auth.users CASCADE;"
-	@echo "✅ Database cleaned"
+# Create a new migration file
+migrate-create:
+	@echo "Creating migration: $(NAME)"
+	migrate create -ext sql -dir migrations -seq $(NAME)
 
-db-backup: ## Backup database to file
-	@echo "💾 Creating database backup..."
-	@mkdir -p backups
-	@BACKUP_FILE=backups/scrappd_backup_$$(date +%Y%m%d_%H%M%S).sql; \
-	docker-compose exec -T postgres pg_dump -U scrappd_admin scrappd > $$BACKUP_FILE; \
-	echo "✅ Backup created: $$BACKUP_FILE"
+# Check migration status
+migrate-status:
+	@echo "Checking migration status..."
+	migrate -path migrations -database "postgresql://$(MIGRATE_DB_USER):$(MIGRATE_DB_PASSWORD)@$(MIGRATE_DB_HOST):$(MIGRATE_DB_PORT)/$(MIGRATE_DB_NAME)?sslmode=disable&x-migrations-table=$(MIGRATE_TABLE)" version
 
-db-restore: ## Restore database from backup (FILE=path/to/backup.sql)
-	@if [ -z "$(FILE)" ]; then \
-		echo "❌ Please provide backup file: make db-restore FILE=backups/backup.sql"; \
-		exit 1; \
-	fi
-	@echo "⚠️  This will overwrite current database!"
-	@read -p "Are you sure? Type 'yes' to confirm: " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted" && exit 1)
-	@echo "📦 Restoring database from $(FILE)..."
-	@cat $(FILE) | docker-compose exec -T postgres psql -U scrappd_admin scrappd
-	@echo "✅ Database restored"
+# Repository Tests
 
-# ML Service
-ml-up: ## Start ML service
-	docker-compose up -d ml-service
+.PHONY: test-repo test-repo-verbose test-repo-coverage
 
-ml-down: ## Stop ML service
-	docker-compose stop ml-service
+# Run repository tests
+test-repo:
+	@echo "Running repository tests..."
+	go test -v ./internal/repository/postgres/... -count=1
 
-ml-logs: ## View ML service logs
-	docker-compose logs -f ml-service
+# Run repository tests with verbose output
+test-repo-verbose:
+	@echo "Running repository tests (verbose)..."
+	go test -v -race ./internal/repository/postgres/... -count=1
 
-ml-rebuild: ## Rebuild and restart ML service
-	docker-compose up -d --build ml-service
+# Run repository tests with coverage
+test-repo-coverage:
+	@echo "Running repository tests with coverage..."
+	go test -v -race -coverprofile=coverage_repo.out -covermode=atomic ./internal/repository/postgres/...
+	@echo "Coverage report saved to coverage_repo.out"
+	@echo "View coverage report: go tool cover -html=coverage_repo.out"
 
-# Tools (optional services)
-tools-up: ## Start pgAdmin and Redis Commander
-	docker-compose --profile tools up -d
+# Complete Test Suite
 
-tools-down: ## Stop optional tools
-	docker-compose --profile tools down
+.PHONY: test-all test-integration
+
+# Run all tests (unit + integration)
+test-all:
+	@echo "Running all tests..."
+	go test -v -race ./... -count=1
 
 # All services
 services-up: ## Start all services (DB + ML)
@@ -191,23 +205,6 @@ services-logs: ## View all service logs
 
 services-restart: ## Restart all services
 	docker-compose restart
-
-# ==============================================
-# MIGRATION COMMANDS (updated)
-# ==============================================
-
-migrate-up: db-health ## Run database migrations
-	@echo "📦 Running migrations..."
-	docker-compose exec postgres psql -U scrappd_admin -d scrappd -f /docker-entrypoint-initdb.d/migration.sql
-	@echo "✅ Migrations complete"
-
-migrate-create: ## Create new migration file (NAME=migration_name)
-	@if [ -z "$(NAME)" ]; then \
-		echo "❌ Please provide migration name: make migrate-create NAME=add_users"; \
-		exit 1; \
-	fi
-	@echo "-- Migration: $(NAME)" > ../database/migrations/$$(date +%Y%m%d%H%M%S)_$(NAME).sql
-	@echo "✅ Created migration: ../database/migrations/$$(date +%Y%m%d%H%M%S)_$(NAME).sql"
 
 # ==============================================
 # SETUP COMMANDS

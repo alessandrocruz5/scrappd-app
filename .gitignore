@@ -40,6 +40,22 @@ tmp/
 temp/
 *.tmp
 
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# ML experiments/artifacts
+scrappd-ml-experiments/output/
+scrappd-ml-experiments/test_images/
+scrappd-ml-experiments/test_results_*
+scrappd-ml-service/test_output.png
+
+# Local binaries and images
+backend/main
+result.png
+result2.png
+
 # Secrets (extra protection)
 *secret*
 *password*

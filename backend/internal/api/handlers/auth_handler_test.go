@@ -302,9 +302,6 @@ func TestAuthHandler_GetMe_Success(t *testing.T) {
 	mockService := new(MockAuthService)
 	handler := NewAuthHandler(mockService)
 
-	router := setupTestRouter()
-	router.GET("/auth/me", handler.GetMe)
-
 	userID := uuid.New()
 	expectedUser := &models.User{
 		ID:       userID,
@@ -314,15 +311,23 @@ func TestAuthHandler_GetMe_Success(t *testing.T) {
 
 	mockService.On("GetUserByID", mock.Anything, userID).Return(expectedUser, nil)
 
-	// w := httptest.NewRecorder()
+	router := setupTestRouter()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", userID.String())
+		c.Next()
+	})
+	router.GET("/auth/me", handler.GetMe)
+
+	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/auth/me", nil)
+	router.ServeHTTP(w, req)
 
-	// Simulate auth middleware setting user_id
-	ctx := &gin.Context{Request: req}
-	ctx.Set("user_id", userID.String())
+	assert.Equal(t, http.StatusOK, w.Code)
 
-	handler.GetMe(ctx)
+	var response utils.Response
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.True(t, response.Success)
 
-	// Note: This test is simplified. In real scenario, we'd need to properly set up Gin context
 	mockService.AssertExpectations(t)
 }

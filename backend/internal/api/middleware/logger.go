@@ -35,6 +35,14 @@ func Logger(logger *logrus.Logger) gin.HandlerFunc {
 			"user_agent": c.Request.UserAgent(),
 		}
 
+		if requestID, ok := c.Get("request_id"); ok {
+			fields["request_id"] = requestID
+		}
+
+		if userID, ok := c.Get("user_id"); ok {
+			fields["user_id"] = userID
+		}
+
 		// Add error if exists
 		if len(c.Errors) > 0 {
 			fields["errors"] = c.Errors.String()
