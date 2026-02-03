@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../data/services/api_service.dart';
 
 enum ProcessingState {
@@ -19,6 +20,7 @@ class ImageProcessingProvider extends ChangeNotifier {
   ProcessingState _state = ProcessingState.idle;
   File? _originalImage;
   File? _processedImage;
+  Uint8List? _processedImageBytes; // Raw bytes for flexibility
   String? _errorMessage;
   double _progress = 0.0;
 
@@ -28,6 +30,7 @@ class ImageProcessingProvider extends ChangeNotifier {
   ProcessingState get state => _state;
   File? get originalImage => _originalImage;
   File? get processedImage => _processedImage;
+  Uint8List? get processedImageBytes => _processedImageBytes;
   String? get errorMessage => _errorMessage;
   double get progress => _progress;
   bool get isProcessing => _state == ProcessingState.processing || 
@@ -81,21 +84,46 @@ class ImageProcessingProvider extends ChangeNotifier {
 
     try {
       _setState(ProcessingState.uploading);
-      _updateProgress(0.3);
+      _updateProgress(0.1);
 
       _setState(ProcessingState.processing);
-      _updateProgress(0.5);
-
-      // Call API to remove background
-      final processedFile = await _apiService.removeBackground(_originalImage!);
       
-      _processedImage = processedFile;
+      // Call API to remove background - returns Uint8List
+      final Uint8List processedBytes = await _apiService.removeBackground(
+        _originalImage!,
+        onProgress: (sent, total) {
+          // Update progress during upload (0.1 to 0.4)
+          if (total > 0) {
+            _updateProgress(0.1 + (sent / total) * 0.3);
+          }
+        },
+      );
+      
+      _updateProgress(0.8);
+      
+      // Store raw bytes
+      _processedImageBytes = processedBytes;
+      
+      // Save bytes to a temporary file for compatibility
+      _processedImage = await _saveBytesToTempFile(processedBytes);
+      
       _updateProgress(1.0);
       _setState(ProcessingState.success);
 
+    } on ApiException catch (e) {
+      _setError(e.message);
     } catch (e) {
       _setError('Processing failed: $e');
     }
+  }
+
+  /// Save bytes to a temporary file
+  Future<File> _saveBytesToTempFile(Uint8List bytes) async {
+    final tempDir = await getTemporaryDirectory();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final file = File('${tempDir.path}/processed_$timestamp.png');
+    await file.writeAsBytes(bytes);
+    return file;
   }
 
   /// Retry processing
@@ -110,6 +138,7 @@ class ImageProcessingProvider extends ChangeNotifier {
   void reset() {
     _originalImage = null;
     _processedImage = null;
+    _processedImageBytes = null;
     _errorMessage = null;
     _progress = 0.0;
     _setState(ProcessingState.idle);
@@ -141,7 +170,7 @@ class ImageProcessingProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _apiService.cancelRequests();
+    // Clean up temp files if needed
     super.dispose();
   }
 }
