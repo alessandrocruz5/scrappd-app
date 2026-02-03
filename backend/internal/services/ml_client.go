@@ -10,11 +10,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"os"
 	"time"
 
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/config"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/models"
 	"github.com/alessandrocruz5/scrappd-app/backend/pkg/utils"
+	"google.golang.org/api/idtoken"
 )
 
 // MLClient is the interface for the ML service client
@@ -25,22 +27,58 @@ type MLClient interface {
 
 // mlClient implements the MLClient interface
 type mlClient struct {
-	httpClient *http.Client
-	baseURL    string
-	maxRetries int
-	retryDelay time.Duration
+	httpClient  *http.Client
+	baseURL     string
+	maxRetries  int
+	retryDelay  time.Duration
+	useGCPAuth  bool
+	tokenSource func(ctx context.Context) (string, error)
 }
 
 // NewMLClient creates a new ML service client
 func NewMLClient(cfg *config.MLServiceConfig) MLClient {
-	return &mlClient{
+	client := &mlClient{
 		httpClient: &http.Client{
 			Timeout: cfg.Timeout,
 		},
 		baseURL:    cfg.BaseURL,
 		maxRetries: cfg.MaxRetries,
 		retryDelay: cfg.RetryDelay,
+		useGCPAuth: os.Getenv("ENVIRONMENT") == "production",
 	}
+
+	// Set up GCP authentication for production
+	if client.useGCPAuth {
+		client.tokenSource = func(ctx context.Context) (string, error) {
+			// Create an ID token for the target service
+			ts, err := idtoken.NewTokenSource(ctx, cfg.BaseURL)
+			if err != nil {
+				return "", fmt.Errorf("failed to create token source: %w", err)
+			}
+			token, err := ts.Token()
+			if err != nil {
+				return "", fmt.Errorf("failed to get token: %w", err)
+			}
+			return token.AccessToken, nil
+		}
+	}
+
+	return client
+}
+
+// addAuthHeader adds GCP authentication header if in production
+func (c *mlClient) addAuthHeader(ctx context.Context, req *http.Request) error {
+	if !c.useGCPAuth || c.tokenSource == nil {
+		return nil
+	}
+
+	token, err := c.tokenSource(ctx)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	return nil
 }
 
 // RemoveBackground sends an image to the ML service for background removal
@@ -52,7 +90,6 @@ func (c *mlClient) RemoveBackground(ctx context.Context, imageData string, forma
 	var lastErr error
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		if attempt > 0 {
-			// Wait before retrying
 			select {
 			case <-ctx.Done():
 				return nil, utils.ErrMLService("Request cancelled", ctx.Err())
@@ -67,7 +104,6 @@ func (c *mlClient) RemoveBackground(ctx context.Context, imageData string, forma
 
 		lastErr = err
 
-		// Don't retry on client errors (4xx)
 		if appErr, ok := err.(*utils.AppError); ok {
 			if appErr.StatusCode >= 400 && appErr.StatusCode < 500 {
 				return nil, err
@@ -92,20 +128,15 @@ func (c *mlClient) doRemoveBackground(ctx context.Context, imageData string, for
 	// Detect content type
 	contentType := http.DetectContentType(imageBytes)
 
-	// Determine filename extension and ensure valid MIME type
 	var filename string
 	switch contentType {
 	case "image/jpeg":
 		filename = "image.jpg"
-		contentType = "image/jpeg"
 	case "image/png":
 		filename = "image.png"
-		contentType = "image/png"
 	case "image/webp":
 		filename = "image.webp"
-		contentType = "image/webp"
 	default:
-		// Default to JPEG for unknown types
 		filename = "image.jpg"
 		contentType = "image/jpeg"
 	}
@@ -114,7 +145,6 @@ func (c *mlClient) doRemoveBackground(ctx context.Context, imageData string, for
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	// Create form file part with proper content type
 	partHeader := make(textproto.MIMEHeader)
 	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
 	partHeader.Set("Content-Type", contentType)
@@ -144,6 +174,11 @@ func (c *mlClient) doRemoveBackground(ctx context.Context, imageData string, for
 	}
 
 	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Add GCP authentication header
+	if err := c.addAuthHeader(ctx, httpReq); err != nil {
+		return nil, utils.ErrInternalServer("Failed to add auth header", err)
+	}
 
 	// Send request
 	httpResp, err := c.httpClient.Do(httpReq)
@@ -178,10 +213,8 @@ func (c *mlClient) doRemoveBackground(ctx context.Context, imageData string, for
 		return nil, utils.ErrMLService("Failed to read response", err)
 	}
 
-	// Convert to base64 for our API response
 	processedImageBase64 := base64.StdEncoding.EncodeToString(processedImageBytes)
 
-	// Get processing time from header if available
 	processingTime := 0.0
 	if timeStr := httpResp.Header.Get("X-Processing-Time"); timeStr != "" {
 		fmt.Sscanf(timeStr, "%f", &processingTime)
@@ -208,6 +241,11 @@ func (c *mlClient) HealthCheck(ctx context.Context) (*models.HealthCheckResponse
 	)
 	if err != nil {
 		return nil, utils.ErrInternalServer("Failed to create health check request", err)
+	}
+
+	// Add GCP authentication header
+	if err := c.addAuthHeader(ctx, httpReq); err != nil {
+		return nil, utils.ErrInternalServer("Failed to add auth header", err)
 	}
 
 	httpResp, err := c.httpClient.Do(httpReq)

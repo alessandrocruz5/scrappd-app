@@ -5,85 +5,61 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/config"
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisClient interface {
 	Ping(ctx context.Context) error
 	Close() error
+	Client() *redis.Client // Expose for future use (caching, sessions, etc.)
 }
 
 type redisClient struct {
-	addr     string
-	password string
-	db       int
-	timeout  time.Duration
+	client *redis.Client
 }
 
 func NewRedisClient(cfg *config.RedisConfig) (RedisClient, error) {
-	if cfg.Host == "" {
-		return nil, fmt.Errorf("redis host is required")
-	}
-	if cfg.Port == "" {
-		return nil, fmt.Errorf("redis port is required")
+	var client *redis.Client
+
+	if cfg.URL != "" {
+		// Parse URL - handles rediss:// (TLS) automatically
+		opt, err := redis.ParseURL(cfg.URL)
+		if err != nil {
+			return nil, fmt.Errorf("invalid redis url: %w", err)
+		}
+		client = redis.NewClient(opt)
+	} else {
+		// Fallback to individual fields (local dev)
+		if cfg.Host == "" {
+			return nil, fmt.Errorf("redis host is required")
+		}
+		client = redis.NewClient(&redis.Options{
+			Addr:     fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+			Password: cfg.Password,
+			DB:       cfg.DB,
+		})
 	}
 
-	return &redisClient{
-		addr:     net.JoinHostPort(cfg.Host, cfg.Port),
-		password: cfg.Password,
-		db:       cfg.DB,
-		timeout:  2 * time.Second,
-	}, nil
+	return &redisClient{client: client}, nil
 }
 
 func (c *redisClient) Ping(ctx context.Context) error {
-	dialer := &net.Dialer{Timeout: c.timeout}
-	conn, err := dialer.DialContext(ctx, "tcp", c.addr)
+	_, err := c.client.Ping(ctx).Result()
 	if err != nil {
-		return fmt.Errorf("redis dial failed: %w", err)
-	}
-	defer conn.Close()
-
-	reader := bufio.NewReader(conn)
-
-	if c.password != "" {
-		if err := writeCommand(conn, "AUTH", c.password); err != nil {
-			return err
-		}
-		if err := readOK(reader); err != nil {
-			return fmt.Errorf("redis auth failed: %w", err)
-		}
-	}
-
-	if c.db != 0 {
-		if err := writeCommand(conn, "SELECT", strconv.Itoa(c.db)); err != nil {
-			return err
-		}
-		if err := readOK(reader); err != nil {
-			return fmt.Errorf("redis select failed: %w", err)
-		}
-	}
-
-	if err := writeCommand(conn, "PING"); err != nil {
-		return err
-	}
-
-	line, err := readLine(reader)
-	if err != nil {
-		return err
-	}
-	if line != "+PONG" {
-		return fmt.Errorf("unexpected redis ping response: %s", line)
+		return fmt.Errorf("redis ping failed: %w", err)
 	}
 	return nil
 }
 
 func (c *redisClient) Close() error {
-	return nil
+	return c.client.Close()
+}
+
+func (c *redisClient) Client() *redis.Client {
+	return c.client
 }
 
 func writeCommand(conn net.Conn, args ...string) error {
