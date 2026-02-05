@@ -36,14 +36,19 @@ class ImageProcessingProvider extends ChangeNotifier {
   bool get isProcessing => _state == ProcessingState.processing || 
                            _state == ProcessingState.uploading;
 
+  // Max image dimension to keep file size under 10 MB limit
+  static const double _maxImageDimension = 2048;
+
   /// Pick image from camera
   Future<void> pickFromCamera() async {
     try {
       _setState(ProcessingState.picking);
-      
+
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
         imageQuality: 85,
+        maxWidth: _maxImageDimension,
+        maxHeight: _maxImageDimension,
       );
 
       if (image != null) {
@@ -61,10 +66,12 @@ class ImageProcessingProvider extends ChangeNotifier {
   Future<void> pickFromGallery() async {
     try {
       _setState(ProcessingState.picking);
-      
+
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 85,
+        maxWidth: _maxImageDimension,
+        maxHeight: _maxImageDimension,
       );
 
       if (image != null) {
