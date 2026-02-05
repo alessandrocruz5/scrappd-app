@@ -27,7 +27,7 @@ class CustomButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: isPrimary
               ? Colors.white
-              : Colors.white.withOpacity(0.2),
+              : Colors.white.withValues(alpha: 0.2),
           foregroundColor: isPrimary
               ? AppTheme.primaryColor
               : Colors.white,
@@ -37,7 +37,7 @@ class CustomButton extends StatelessWidget {
             side: isPrimary
                 ? BorderSide.none
                 : BorderSide(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     width: 2,
                   ),
           ),

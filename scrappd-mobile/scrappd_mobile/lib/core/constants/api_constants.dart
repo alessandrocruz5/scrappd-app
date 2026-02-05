@@ -1,44 +1,55 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../config/environment.dart';
 
+/// API Constants for Scrapp'd
+/// 
+/// Uses EnvironmentConfig to automatically switch between
+/// development and production URLs.
 class ApiConstants {
-  // Get base URL from .env or use localhost as default
-  static String get baseUrl {
-    try {
-      return dotenv.env['API_BASE_URL'] ?? 'http://localhost:8080';
-    } catch (e) {
-      // If dotenv is not loaded, return default
-      return 'http://localhost:8080';
-    }
-  }
-
+  // Base URL from environment config
+  static String get baseUrl => EnvironmentConfig.apiBaseUrl;
+  
+  // API versioning
   static const String apiVersion = '/api/v1';
+  
+  // Health check endpoints
   static const String healthCheck = '/health';
-  static const String removeBackground = '$apiVersion/ml/process';
-
-  // Auth
-  static const String authRegister = '$apiVersion/auth/register';
-  static const String authLogin = '$apiVersion/auth/login';
-  static const String authRefresh = '$apiVersion/auth/refresh';
-  static const String authLogout = '$apiVersion/auth/logout';
-  static const String authMe = '$apiVersion/auth/me';
-
-  // Items
-  static const String items = '$apiVersion/items';
-  static const String itemsUsage = '$apiVersion/items/usage';
-
-  // Projects & Pages
-  static const String projects = '$apiVersion/projects';
-  static const String pages = '$apiVersion/pages';
+  static const String healthDeep = '/health/deep';
   
-  static const Duration connectionTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 120);
-  static const Duration sendTimeout = Duration(seconds: 30);
+  // Auth endpoints
+  static const String authRegister = '/auth/register';
+  static const String authLogin = '/auth/login';
+  static const String authRefresh = '/auth/refresh';
+  static const String authLogout = '/auth/logout';
   
+  // User endpoints
+  static String get me => '$apiVersion/me';
+  static String get usage => '$apiVersion/usage';
+  
+  // ML Processing endpoints
+  static String get removeBackground => '$apiVersion/ml/process';
+  static String get removeBackgroundUpload => '$apiVersion/remove-background/upload';
+  
+  // Items endpoints
+  static String get items => '$apiVersion/items';
+  static String itemById(String id) => '$apiVersion/items/$id';
+  
+  // Pages endpoints
+  static String get pages => '$apiVersion/pages';
+  static String pageById(String id) => '$apiVersion/pages/$id';
+  static String pageItems(String pageId) => '$apiVersion/pages/$pageId/items';
+  
+  // Timeouts from environment
+  static Duration get connectionTimeout => EnvironmentConfig.connectionTimeout;
+  static Duration get receiveTimeout => EnvironmentConfig.receiveTimeout;
+  static const Duration sendTimeout = Duration(seconds: 60);
+  
+  // Default headers
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
   
-  static const int maxFileSize = 10 * 1024 * 1024;
+  // Image constraints
+  static const int maxFileSize = 10 * 1024 * 1024; // 10MB
   static const List<String> allowedFormats = ['jpg', 'jpeg', 'png', 'webp'];
 }

@@ -38,6 +38,7 @@ type DatabaseConfig struct {
 }
 
 type RedisConfig struct {
+	URL      string
 	Host     string
 	Port     string
 	Password string
@@ -74,7 +75,7 @@ func Load() (*Config, error) {
 	config := &Config{
 		Server: ServerConfig{
 			Host:            getEnv("SERVER_HOST", "0.0.0.0"),
-			Port:            getEnv("SERVER_PORT", "8080"),
+			Port:            getEnv("PORT", getEnv("SERVER_PORT", "8080")),
 			Environment:     getEnv("ENVIRONMENT", "development"),
 			ReadTimeout:     getDurationEnv("SERVER_READ_TIMEOUT", 10*time.Second),
 			WriteTimeout:    getDurationEnv("SERVER_WRITE_TIMEOUT", 10*time.Second),
@@ -84,11 +85,12 @@ func Load() (*Config, error) {
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),
 			User:     getEnv("DB_USER", "scrappd_app"),
-			Password: getEnv("DB_PASSWORD", "scrappd-go"),
+			Password: getEnv("DB_PASSWORD", "usTiCr$9S%B5u2"),
 			DBName:   getEnv("DB_NAME", "scrappd"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		Redis: RedisConfig{
+			URL:      getEnv("REDIS_URL", ""),
 			Host:     getEnv("REDIS_HOST", "localhost"),
 			Port:     getEnv("REDIS_PORT", "6379"),
 			Password: getEnv("REDIS_PASSWORD", ""),
@@ -116,15 +118,19 @@ func Load() (*Config, error) {
 	}
 
 	// Build database DSN
-	config.Database.DSN = fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		config.Database.Host,
-		config.Database.Port,
-		config.Database.User,
-		config.Database.Password,
-		config.Database.DBName,
-		config.Database.SSLMode,
-	)
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			config.Database.Host,
+			config.Database.Port,
+			config.Database.User,
+			config.Database.Password,
+			config.Database.DBName,
+			config.Database.SSLMode,
+		)
+	}
+	config.Database.DSN = dsn
 
 	if config.Server.Environment != "development" {
 		if config.JWT.AccessTokenSecret == "your-secret-key-change-in-production" ||

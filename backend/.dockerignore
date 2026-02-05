@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+
+# Test files
+*_test.go
+coverage.html
+coverage.out
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+tmp/
+*.exe
+
+# Documentation
+*.md
+docs/
+
+# Docker
+Dockerfile*
+docker-compose*

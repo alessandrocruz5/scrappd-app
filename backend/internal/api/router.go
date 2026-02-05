@@ -72,7 +72,7 @@ func SetupRouter(
 
 		// ML endpoints - now protected
 		mlRoutes := v1.Group("/ml")
-		mlRoutes.Use(middleware.AuthMiddleware(tokenManager))
+		mlRoutes.Use(middleware.OptionalAuthMiddleware(tokenManager))
 		{
 			mlRoutes.POST("/process", mlHandler.RemoveBackgroundFromFile)
 		}
