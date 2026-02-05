@@ -113,15 +113,35 @@ class ApiService {
     return null;
   }
 
+  /// Get content type from filename extension
+  String _getContentTypeFromFilename(String filename) {
+    final ext = filename.toLowerCase().split('.').last;
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/jpeg'; // Default to JPEG
+    }
+  }
+
   /// Remove background from image file
   Future<Uint8List> removeBackground(File imageFile, {
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
+      final filename = imageFile.path.split('/').last;
+      final contentType = _getContentTypeFromFilename(filename);
+
       final formData = FormData.fromMap({
         'image': await MultipartFile.fromFile(
           imageFile.path,
-          filename: imageFile.path.split('/').last,
+          filename: filename,
+          contentType: DioMediaType.parse(contentType),
         ),
         'format': 'png',
       });
@@ -133,6 +153,8 @@ class ApiService {
           responseType: ResponseType.bytes,
           // Longer timeout for ML processing
           receiveTimeout: const Duration(seconds: 180),
+          // Let Dio set Content-Type automatically for FormData (with boundary)
+          contentType: 'multipart/form-data',
         ),
         onSendProgress: onProgress,
       );
@@ -153,10 +175,13 @@ class ApiService {
     void Function(int sent, int total)? onProgress,
   }) async {
     try {
+      final contentType = _getContentTypeFromFilename(filename);
+
       final formData = FormData.fromMap({
         'image': MultipartFile.fromBytes(
           imageBytes,
           filename: filename,
+          contentType: DioMediaType.parse(contentType),
         ),
         'format': 'png',
       });
@@ -167,6 +192,8 @@ class ApiService {
         options: Options(
           responseType: ResponseType.bytes,
           receiveTimeout: const Duration(seconds: 180),
+          // Let Dio set Content-Type automatically for FormData (with boundary)
+          contentType: 'multipart/form-data',
         ),
         onSendProgress: onProgress,
       );
