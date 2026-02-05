@@ -57,95 +57,91 @@ void main() async {
 class ScrappdApp extends StatelessWidget {
   const ScrappdApp({super.key});
 
-  runApp(
-    MultiProvider(
+  @override
+  Widget build(BuildContext context) {
+    // Create shared instances
+    final tokenStorage = TokenStorage();
+    final apiClient = ApiClient(tokenStorage);
+    final dio = apiClient.dio;
+
+    return MultiProvider(
       providers: [
-        // API Service
-        Provider<ApiService>(
-          create: (_) => ApiService(),
-          dispose: (_, service) => service.dispose(),
+        // Core services
+        Provider<TokenStorage>.value(value: tokenStorage),
+        Provider<ApiClient>.value(value: apiClient),
+
+        // Auth
+        Provider<AuthRemoteDataSource>(
+          create: (_) => AuthRemoteDataSource(dio),
         ),
-        // Image processing provider
-        ChangeNotifierProxyProvider<ApiService, ImageProcessingProvider>(
-          create: (_) => ImageProcessingProvider(ApiService()),
-          update: (_, apiService, previous) => 
-            previous ?? ImageProcessingProvider(apiService),
+        Provider<AuthRepositoryImpl>(
+          create: (context) => AuthRepositoryImpl(
+            remoteDataSource: context.read<AuthRemoteDataSource>(),
+            tokenStorage: tokenStorage,
+          ),
+        ),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (context) => AuthProvider(context.read<AuthRepositoryImpl>()),
+        ),
+
+        // Projects
+        Provider<ProjectsRemoteDataSource>(
+          create: (_) => ProjectsRemoteDataSource(dio),
+        ),
+        Provider<ProjectRepositoryImpl>(
+          create: (context) =>
+              ProjectRepositoryImpl(context.read<ProjectsRemoteDataSource>()),
+        ),
+        ChangeNotifierProvider<ProjectsProvider>(
+          create: (context) =>
+              ProjectsProvider(context.read<ProjectRepositoryImpl>()),
+        ),
+
+        // Items
+        Provider<ItemsRemoteDataSource>(
+          create: (_) => ItemsRemoteDataSource(dio),
+        ),
+        Provider<ItemRepositoryImpl>(
+          create: (context) =>
+              ItemRepositoryImpl(context.read<ItemsRemoteDataSource>()),
+        ),
+        ChangeNotifierProvider<ItemsProvider>(
+          create: (context) =>
+              ItemsProvider(context.read<ItemRepositoryImpl>()),
+        ),
+
+        // Pages
+        Provider<PagesRemoteDataSource>(
+          create: (_) => PagesRemoteDataSource(dio),
+        ),
+        Provider<PageRepositoryImpl>(
+          create: (context) =>
+              PageRepositoryImpl(context.read<PagesRemoteDataSource>()),
+        ),
+
+        // Page Items
+        Provider<PageItemsRemoteDataSource>(
+          create: (_) => PageItemsRemoteDataSource(dio),
+        ),
+        Provider<PageItemRepositoryImpl>(
+          create: (context) =>
+              PageItemRepositoryImpl(context.read<PageItemsRemoteDataSource>()),
+        ),
+
+        // Page Editor (depends on page and page item repositories)
+        ChangeNotifierProvider<PageEditorProvider>(
+          create: (context) => PageEditorProvider(
+            context.read<PageRepositoryImpl>(),
+            context.read<PageItemRepositoryImpl>(),
+          ),
         ),
       ],
       child: MaterialApp(
-        title: 'Scrapp\'d',
+        title: "Scrapp'd",
         debugShowCheckedModeBanner: EnvironmentConfig.showDebugBanner,
-        theme: ThemeData.light(),
-        darkTheme: ThemeData.dark(),
-        themeMode: ThemeMode.system,
-        home: const SplashScreen(),
+        theme: AppTheme.lightTheme,
+        home: const RootScreen(),
       ),
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _checkHealthAndNavigate();
-  }
-
-  Future<void> _checkHealthAndNavigate() async {
-    // Show splash for minimum 2 seconds
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-
-    // Check API health
-    final apiService = context.read<ApiService>();
-    final isHealthy = await apiService.healthCheck();
-
-    if (!mounted) return;
-
-    if (!isHealthy) {
-      // Show error dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('Connection Error'),
-          content: const Text(
-            'Cannot connect to the server. Please make sure the backend is running.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _checkHealthAndNavigate();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      // Navigate to home
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: "Scrapp'd",
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const RootScreen(),
     );
   }
 }
