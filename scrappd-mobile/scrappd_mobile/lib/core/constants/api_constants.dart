@@ -23,7 +23,12 @@ class ApiConstants {
   
   // User endpoints
   static String get me => '$apiVersion/me';
+  static String get authMe => '$apiVersion/me';
   static String get usage => '$apiVersion/usage';
+
+  // Projects endpoints
+  static String get projects => '$apiVersion/projects';
+  static String projectById(String id) => '$apiVersion/projects/$id';
   
   // ML Processing endpoints
   static String get removeBackground => '$apiVersion/ml/process';
