@@ -5,9 +5,23 @@ import 'package:scrappd_mobile/core/config/environment.dart';
 
 import 'core/constants/api_constants.dart';
 import 'core/constants/theme_constants.dart';
-import 'data/services/api_service.dart';
-import 'presentation/providers/image_provider.dart';
-import 'presentation/screens/home_screen.dart';
+import 'core/network/api_client.dart';
+import 'core/storage/token_storage.dart';
+import 'data/datasources/auth_remote_datasource.dart';
+import 'data/datasources/items_remote_datasource.dart';
+import 'data/datasources/page_items_remote_datasource.dart';
+import 'data/datasources/pages_remote_datasource.dart';
+import 'data/datasources/projects_remote_datasource.dart';
+import 'data/repositories/auth_repository_impl.dart';
+import 'data/repositories/item_repository_impl.dart';
+import 'data/repositories/page_item_repository_impl.dart';
+import 'data/repositories/page_repository_impl.dart';
+import 'data/repositories/project_repository_impl.dart';
+import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/items_provider.dart';
+import 'presentation/providers/page_editor_provider.dart';
+import 'presentation/providers/projects_provider.dart';
+import 'presentation/screens/shell/root_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,9 +57,8 @@ void main() async {
 class ScrappdApp extends StatelessWidget {
   const ScrappdApp({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  runApp(
+    MultiProvider(
       providers: [
         // API Service
         Provider<ApiService>(
@@ -128,46 +141,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.auto_fix_high,
-                size: 80,
-                color: Colors.white,
-              ),
-              SizedBox(height: AppTheme.spacing24),
-              Text(
-                "Scrapp'd",
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: -1,
-                ),
-              ),
-              SizedBox(height: AppTheme.spacing8),
-              Text(
-                'AI Background Remover',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white70,
-                ),
-              ),
-              SizedBox(height: AppTheme.spacing48),
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return MaterialApp(
+      title: "Scrapp'd",
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      home: const RootScreen(),
     );
   }
 }

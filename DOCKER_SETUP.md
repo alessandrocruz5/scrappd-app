@@ -31,6 +31,7 @@ make db-up
 make ml-up
 
 # Start backend API (in backend/)
+# Ensure DB_PORT=5433 in your environment when using docker-compose
 cd backend && make dev
 
 # View logs
@@ -65,7 +66,7 @@ make services-down
 
 ## Port Reference
 
-- **5432** - PostgreSQL
+- **5433** - PostgreSQL (host → container 5432)
 - **6379** - Redis  
 - **8000** - ML Service
 - **8080** - Backend API
