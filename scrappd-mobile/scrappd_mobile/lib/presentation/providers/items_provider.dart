@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/item.dart';
 import '../../domain/repositories/item_repository.dart';
+import '../../core/utils/image_preprocessor.dart';
 
 enum UploadState {
   idle,
@@ -20,6 +22,10 @@ class ItemsProvider extends ChangeNotifier {
   UploadState _uploadState = UploadState.idle;
   Item? _latestItem;
   String? _errorMessage;
+  DateTime? _startTime;
+  Duration _elapsed = Duration.zero;
+  int? _uploadBytes;
+  Timer? _timer;
 
   bool _isLoading = false;
   List<Item> _items = [];
@@ -29,6 +35,8 @@ class ItemsProvider extends ChangeNotifier {
   UploadState get uploadState => _uploadState;
   Item? get latestItem => _latestItem;
   String? get errorMessage => _errorMessage;
+  Duration get elapsed => _elapsed;
+  int? get uploadBytes => _uploadBytes;
   bool get isLoading => _isLoading;
   List<Item> get items => _items;
   int get page => _page;
@@ -64,11 +72,14 @@ class ItemsProvider extends ChangeNotifier {
   }) async {
     _uploadState = UploadState.uploading;
     _errorMessage = null;
+    _startTimer();
     notifyListeners();
 
     try {
+      final preparedImage = await ImagePreprocessor.prepareForUpload(imageFile);
+      _uploadBytes = await preparedImage.length();
       final item = await _repository.createItem(
-        imageFile: imageFile,
+        imageFile: preparedImage,
         itemName: itemName,
         itemCategory: itemCategory,
         tags: tags,
@@ -77,9 +88,15 @@ class ItemsProvider extends ChangeNotifier {
       _latestItem = item;
       _uploadState = UploadState.success;
       _items = [item, ..._items];
+      _stopTimer();
+    } on ImageTooLargeException catch (e) {
+      _errorMessage = e.toString();
+      _uploadState = UploadState.error;
+      _stopTimer();
     } catch (e) {
       _errorMessage = e.toString();
       _uploadState = UploadState.error;
+      _stopTimer();
     } finally {
       notifyListeners();
     }
@@ -89,11 +106,37 @@ class ItemsProvider extends ChangeNotifier {
     _uploadState = UploadState.idle;
     _latestItem = null;
     _errorMessage = null;
+    _startTime = null;
+    _elapsed = Duration.zero;
+    _uploadBytes = null;
+    _stopTimer();
     notifyListeners();
   }
 
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  void _startTimer() {
+    _startTime = DateTime.now();
+    _elapsed = Duration.zero;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_startTime == null) return;
+      _elapsed = DateTime.now().difference(_startTime!);
+      notifyListeners();
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopTimer();
+    super.dispose();
   }
 }

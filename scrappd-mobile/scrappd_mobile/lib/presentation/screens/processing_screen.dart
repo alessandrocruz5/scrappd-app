@@ -81,6 +81,31 @@ class ProcessingScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
 
+                      const SizedBox(height: AppTheme.spacing12),
+
+                      // Diagnostics
+                      Column(
+                        children: [
+                          Text(
+                            'Elapsed: ${_formatDuration(provider.elapsed)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withValues(alpha: 0.8),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (provider.uploadBytes != null)
+                            Text(
+                              'Upload size: ${_formatBytes(provider.uploadBytes!)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                        ],
+                      ),
+
                       const SizedBox(height: AppTheme.spacing32),
 
                       // Progress percentage
@@ -144,5 +169,20 @@ class ProcessingScreen extends StatelessWidget {
       default:
         return 'Processing...';
     }
+  }
+
+  String _formatDuration(Duration duration) {
+    final seconds = duration.inSeconds;
+    if (seconds < 60) return '${seconds}s';
+    final minutes = seconds ~/ 60;
+    final remainder = seconds % 60;
+    return '${minutes}m ${remainder}s';
+  }
+
+  String _formatBytes(int bytes) {
+    final mb = bytes / (1024 * 1024);
+    if (mb >= 1) return '${mb.toStringAsFixed(1)}MB';
+    final kb = bytes / 1024;
+    return '${kb.toStringAsFixed(0)}KB';
   }
 }

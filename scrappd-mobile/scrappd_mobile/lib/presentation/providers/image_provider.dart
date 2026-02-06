@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../core/utils/image_preprocessor.dart';
 import '../../data/services/api_service.dart';
 
 enum ProcessingState {
@@ -23,6 +25,10 @@ class ImageProcessingProvider extends ChangeNotifier {
   Uint8List? _processedImageBytes; // Raw bytes for flexibility
   String? _errorMessage;
   double _progress = 0.0;
+  DateTime? _startTime;
+  Duration _elapsed = Duration.zero;
+  int? _uploadBytes;
+  Timer? _timer;
 
   ImageProcessingProvider(this._apiService);
 
@@ -33,11 +39,13 @@ class ImageProcessingProvider extends ChangeNotifier {
   Uint8List? get processedImageBytes => _processedImageBytes;
   String? get errorMessage => _errorMessage;
   double get progress => _progress;
+  Duration get elapsed => _elapsed;
+  int? get uploadBytes => _uploadBytes;
   bool get isProcessing => _state == ProcessingState.processing || 
                            _state == ProcessingState.uploading;
 
-  // Max image dimension to keep file size under 10 MB limit
-  static const double _maxImageDimension = 2048;
+  // Max image dimension for capture/pick (preprocessor enforces size limit)
+  static final double _maxImageDimension = ImagePreprocessor.maxDimension.toDouble();
 
   /// Pick image from camera
   Future<void> pickFromCamera() async {
@@ -46,7 +54,7 @@ class ImageProcessingProvider extends ChangeNotifier {
 
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 85,
+        imageQuality: 92,
         maxWidth: _maxImageDimension,
         maxHeight: _maxImageDimension,
       );
@@ -69,7 +77,7 @@ class ImageProcessingProvider extends ChangeNotifier {
 
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 92,
         maxWidth: _maxImageDimension,
         maxHeight: _maxImageDimension,
       );
@@ -93,11 +101,15 @@ class ImageProcessingProvider extends ChangeNotifier {
       _setState(ProcessingState.uploading);
       _updateProgress(0.1);
 
+      _startTimer();
+      final uploadFile = await ImagePreprocessor.prepareForUpload(_originalImage!);
+      _uploadBytes = await uploadFile.length();
+
       _setState(ProcessingState.processing);
       
       // Call API to remove background - returns Uint8List
       final Uint8List processedBytes = await _apiService.removeBackground(
-        _originalImage!,
+        uploadFile,
         onProgress: (sent, total) {
           // Update progress during upload (0.1 to 0.4)
           if (total > 0) {
@@ -116,11 +128,17 @@ class ImageProcessingProvider extends ChangeNotifier {
       
       _updateProgress(1.0);
       _setState(ProcessingState.success);
+      _stopTimer();
 
+    } on ImageTooLargeException catch (e) {
+      _setError(e.toString());
+      _stopTimer();
     } on ApiException catch (e) {
       _setError(e.message);
+      _stopTimer();
     } catch (e) {
       _setError('Processing failed: $e');
+      _stopTimer();
     }
   }
 
@@ -148,6 +166,10 @@ class ImageProcessingProvider extends ChangeNotifier {
     _processedImageBytes = null;
     _errorMessage = null;
     _progress = 0.0;
+    _startTime = null;
+    _elapsed = Duration.zero;
+    _uploadBytes = null;
+    _stopTimer();
     _setState(ProcessingState.idle);
   }
 
@@ -175,9 +197,26 @@ class ImageProcessingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _startTimer() {
+    _startTime = DateTime.now();
+    _elapsed = Duration.zero;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_startTime == null) return;
+      _elapsed = DateTime.now().difference(_startTime!);
+      notifyListeners();
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
   @override
   void dispose() {
     // Clean up temp files if needed
+    _stopTimer();
     super.dispose();
   }
 }

@@ -35,7 +35,9 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
   Future<void> _pickImage(ImageSource source) async {
     final XFile? image = await _picker.pickImage(
       source: source,
-      imageQuality: 90,
+      imageQuality: 92,
+      maxWidth: 4096,
+      maxHeight: 4096,
     );
 
     if (image == null) return;

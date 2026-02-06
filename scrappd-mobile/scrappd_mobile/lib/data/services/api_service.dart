@@ -136,6 +136,8 @@ class ApiService {
     try {
       final filename = imageFile.path.split('/').last;
       final contentType = _getContentTypeFromFilename(filename);
+      final start = DateTime.now();
+      final fileSize = await imageFile.length();
 
       final formData = FormData.fromMap({
         'image': await MultipartFile.fromFile(
@@ -152,14 +154,21 @@ class ApiService {
         options: Options(
           responseType: ResponseType.bytes,
           // Longer timeout for ML processing
+          sendTimeout: const Duration(seconds: 180),
           receiveTimeout: const Duration(seconds: 180),
           // Let Dio set Content-Type automatically for FormData (with boundary)
           contentType: 'multipart/form-data',
         ),
         onSendProgress: onProgress,
       );
-      
+
       if (response.statusCode == 200 && response.data != null) {
+        if (EnvironmentConfig.verboseLogging) {
+          final elapsed = DateTime.now().difference(start);
+          final mb = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+          debugPrint('🧾 Upload+process completed in ${elapsed.inSeconds}s '
+              '(${elapsed.inMilliseconds}ms). File size: ${mb}MB');
+        }
         return Uint8List.fromList(response.data);
       }
       
@@ -176,6 +185,8 @@ class ApiService {
   }) async {
     try {
       final contentType = _getContentTypeFromFilename(filename);
+      final start = DateTime.now();
+      final byteCount = imageBytes.length;
 
       final formData = FormData.fromMap({
         'image': MultipartFile.fromBytes(
@@ -191,14 +202,21 @@ class ApiService {
         data: formData,
         options: Options(
           responseType: ResponseType.bytes,
+          sendTimeout: const Duration(seconds: 180),
           receiveTimeout: const Duration(seconds: 180),
           // Let Dio set Content-Type automatically for FormData (with boundary)
           contentType: 'multipart/form-data',
         ),
         onSendProgress: onProgress,
       );
-      
+
       if (response.statusCode == 200 && response.data != null) {
+        if (EnvironmentConfig.verboseLogging) {
+          final elapsed = DateTime.now().difference(start);
+          final mb = (byteCount / (1024 * 1024)).toStringAsFixed(2);
+          debugPrint('🧾 Upload+process completed in ${elapsed.inSeconds}s '
+              '(${elapsed.inMilliseconds}ms). File size: ${mb}MB');
+        }
         return Uint8List.fromList(response.data);
       }
       

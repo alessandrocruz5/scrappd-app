@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:scrappd_mobile/core/config/environment.dart';
 
@@ -18,6 +19,7 @@ import 'data/repositories/page_item_repository_impl.dart';
 import 'data/repositories/page_repository_impl.dart';
 import 'data/repositories/project_repository_impl.dart';
 import 'data/services/page_export_service.dart';
+import 'firebase_options.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/items_provider.dart';
 import 'presentation/providers/page_editor_provider.dart';
@@ -26,6 +28,10 @@ import 'presentation/screens/shell/root_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   
   // Initialize environment configuration
   EnvironmentConfig.initialize();

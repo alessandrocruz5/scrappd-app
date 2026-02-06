@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/constants/api_constants.dart';
+import '../../core/config/environment.dart';
 import '../../core/models/api_response.dart';
 import '../models/item_model.dart';
 
@@ -18,6 +20,9 @@ class ItemsRemoteDataSource {
     List<String>? tags,
     String? format,
   }) async {
+    final start = DateTime.now();
+    final fileSize = await imageFile.length();
+
     final formData = FormData.fromMap({
       'image': await MultipartFile.fromFile(
         imageFile.path,
@@ -35,8 +40,17 @@ class ItemsRemoteDataSource {
       data: formData,
       options: Options(
         headers: {'Content-Type': 'multipart/form-data'},
+        sendTimeout: const Duration(seconds: 180),
+        receiveTimeout: const Duration(seconds: 180),
       ),
     );
+
+    if (EnvironmentConfig.verboseLogging) {
+      final elapsed = DateTime.now().difference(start);
+      final mb = (fileSize / (1024 * 1024)).toStringAsFixed(2);
+      debugPrint('🧾 Item upload completed in ${elapsed.inSeconds}s '
+          '(${elapsed.inMilliseconds}ms). File size: ${mb}MB');
+    }
 
     final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
       response.data as Map<String, dynamic>,
