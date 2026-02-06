@@ -78,6 +78,7 @@ func TestAuthFlow_Integration(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		nil,
 		tokenManager,
 		logger,
 	)

@@ -17,6 +17,7 @@ import 'data/repositories/item_repository_impl.dart';
 import 'data/repositories/page_item_repository_impl.dart';
 import 'data/repositories/page_repository_impl.dart';
 import 'data/repositories/project_repository_impl.dart';
+import 'data/services/page_export_service.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/items_provider.dart';
 import 'presentation/providers/page_editor_provider.dart';
@@ -50,17 +51,25 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  
-  runApp(const ScrappdApp());
+
+  // SharedPreferences-backed token storage must be initialized before providers use it.
+  final tokenStorage = TokenStorage();
+  await tokenStorage.init();
+
+  runApp(ScrappdApp(tokenStorage: tokenStorage));
 }
 
 class ScrappdApp extends StatelessWidget {
-  const ScrappdApp({super.key});
+  const ScrappdApp({
+    required this.tokenStorage,
+    super.key,
+  });
+
+  final TokenStorage tokenStorage;
 
   @override
   Widget build(BuildContext context) {
     // Create shared instances
-    final tokenStorage = TokenStorage();
     final apiClient = ApiClient(tokenStorage);
     final dio = apiClient.dio;
 
@@ -69,6 +78,11 @@ class ScrappdApp extends StatelessWidget {
         // Core services
         Provider<TokenStorage>.value(value: tokenStorage),
         Provider<ApiClient>.value(value: apiClient),
+        Provider<PageExportService>(
+          create: (context) => PageExportService(
+            context.read<ApiClient>().dio,
+          ),
+        ),
 
         // Auth
         Provider<AuthRemoteDataSource>(

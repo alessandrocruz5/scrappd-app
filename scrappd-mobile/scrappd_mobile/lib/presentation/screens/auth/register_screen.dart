@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
+import 'email_verification_pending_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -160,6 +161,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   )
                                 : const Text('Create account'),
                           ),
+                        ),
+                        const SizedBox(height: AppTheme.spacing12),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EmailVerificationPendingScreen(
+                                  email: _emailController.text.trim().isEmpty
+                                      ? null
+                                      : _emailController.text.trim(),
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Already registered? Verify email'),
                         ),
                       ],
                     ),

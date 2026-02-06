@@ -24,6 +24,7 @@ type UserRepository interface {
 	GetByUsername(ctx context.Context, username string) (*models.User, error)
 	Update(ctx context.Context, user *models.User) error
 	UpdateLastLogin(ctx context.Context, userID uuid.UUID) error
+	MarkEmailVerified(ctx context.Context, userID uuid.UUID) error
 	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Refresh token methods
@@ -31,6 +32,12 @@ type UserRepository interface {
 	GetRefreshToken(ctx context.Context, tokenHash string) (*models.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllUserTokens(ctx context.Context, userID uuid.UUID) error
+
+	// Password reset methods
+	CreatePasswordReset(ctx context.Context, reset *models.PasswordReset) error
+	GetActivePasswordResetByTokenHash(ctx context.Context, tokenHash string) (*models.PasswordReset, error)
+	MarkPasswordResetUsed(ctx context.Context, resetID uuid.UUID) error
+	UpdatePasswordHash(ctx context.Context, userID uuid.UUID, passwordHash string) error
 }
 
 type userRepository struct {
@@ -221,6 +228,24 @@ func (r *userRepository) UpdateLastLogin(ctx context.Context, userID uuid.UUID) 
 	return nil
 }
 
+func (r *userRepository) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	query := `
+        UPDATE auth.users
+        SET is_verified = TRUE, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND deleted_at IS NULL
+    `
+
+	result, err := r.db.Pool.Exec(ctx, query, userID)
+	if err != nil {
+		return utils.ErrDatabase("Failed to verify email", err)
+	}
+	if result.RowsAffected() == 0 {
+		return utils.ErrNotFound("User")
+	}
+
+	return nil
+}
+
 func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `
         UPDATE auth.users
@@ -309,6 +334,90 @@ func (r *userRepository) RevokeAllUserTokens(ctx context.Context, userID uuid.UU
 	_, err := r.db.Pool.Exec(ctx, query, userID)
 	if err != nil {
 		return utils.ErrDatabase("Failed to revoke user tokens", err)
+	}
+
+	return nil
+}
+
+func (r *userRepository) CreatePasswordReset(ctx context.Context, reset *models.PasswordReset) error {
+	query := `
+        INSERT INTO auth.password_resets (id, user_id, token_hash, expires_at)
+        VALUES ($1, $2, $3, $4)
+        RETURNING created_at
+    `
+
+	err := r.db.Pool.QueryRow(
+		ctx, query,
+		reset.ID, reset.UserID, reset.TokenHash, reset.ExpiresAt,
+	).Scan(&reset.CreatedAt)
+	if err != nil {
+		return utils.ErrDatabase("Failed to create password reset token", err)
+	}
+
+	return nil
+}
+
+func (r *userRepository) GetActivePasswordResetByTokenHash(ctx context.Context, tokenHash string) (*models.PasswordReset, error) {
+	query := `
+        SELECT id, user_id, token_hash, expires_at, used_at, created_at
+        FROM auth.password_resets
+        WHERE token_hash = $1
+          AND used_at IS NULL
+          AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY created_at DESC
+        LIMIT 1
+    `
+
+	reset := &models.PasswordReset{}
+	err := r.db.Pool.QueryRow(ctx, query, tokenHash).Scan(
+		&reset.ID,
+		&reset.UserID,
+		&reset.TokenHash,
+		&reset.ExpiresAt,
+		&reset.UsedAt,
+		&reset.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, utils.ErrUnauthorized("Invalid or expired reset token", nil)
+		}
+		return nil, utils.ErrDatabase("Failed to fetch password reset token", err)
+	}
+
+	return reset, nil
+}
+
+func (r *userRepository) MarkPasswordResetUsed(ctx context.Context, resetID uuid.UUID) error {
+	query := `
+        UPDATE auth.password_resets
+        SET used_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND used_at IS NULL
+    `
+
+	result, err := r.db.Pool.Exec(ctx, query, resetID)
+	if err != nil {
+		return utils.ErrDatabase("Failed to mark password reset as used", err)
+	}
+	if result.RowsAffected() == 0 {
+		return utils.ErrUnauthorized("Invalid or expired reset token", nil)
+	}
+
+	return nil
+}
+
+func (r *userRepository) UpdatePasswordHash(ctx context.Context, userID uuid.UUID, passwordHash string) error {
+	query := `
+        UPDATE auth.users
+        SET password_hash = $2, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND deleted_at IS NULL
+    `
+
+	result, err := r.db.Pool.Exec(ctx, query, userID, passwordHash)
+	if err != nil {
+		return utils.ErrDatabase("Failed to update password", err)
+	}
+	if result.RowsAffected() == 0 {
+		return utils.ErrNotFound("User")
 	}
 
 	return nil

@@ -60,13 +60,16 @@ func main() {
 	tokenManager := auth.NewTokenManager(
 		cfg.JWT.AccessTokenSecret,
 		cfg.JWT.RefreshTokenSecret,
+		cfg.JWT.VerifyTokenSecret,
 		cfg.JWT.AccessTokenExpiry,
 		cfg.JWT.RefreshTokenExpiry,
+		cfg.JWT.VerifyTokenExpiry,
 	)
 
 	// Initialize ML client
 	mlClient := services.NewMLClient(&cfg.MLService)
-	authService := services.NewAuthService(userRepo, tokenManager)
+	emailSender := services.NewEmailSender(cfg.Email, logger)
+	authService := services.NewAuthService(userRepo, tokenManager, emailSender, cfg.App.BaseURL)
 	usageService := services.NewUsageService(usageRepo)
 
 	storage, err := services.NewR2Storage(&cfg.Storage, logger)
@@ -84,6 +87,7 @@ func main() {
 	pagesService := services.NewPagesService(pagesRepo)
 	projectsService := services.NewProjectsService(projectsRepo)
 	pageItemsService := services.NewPageItemsService(pageItemsRepo)
+	pageRenderService := services.NewPageRenderService(pagesRepo, pageItemsRepo, itemsRepo, storage)
 
 	logger.Info("ML client initialized")
 
@@ -95,6 +99,7 @@ func main() {
 		projectsService,
 		pagesService,
 		pageItemsService,
+		pageRenderService,
 		usageService,
 		db,
 		redisClient,

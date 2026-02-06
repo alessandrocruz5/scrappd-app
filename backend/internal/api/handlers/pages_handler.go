@@ -12,36 +12,38 @@ import (
 )
 
 type PagesHandler struct {
-	pagesService services.PagesService
+	pagesService      services.PagesService
+	pageRenderService services.PageRenderService
 }
 
-func NewPagesHandler(pagesService services.PagesService) *PagesHandler {
+func NewPagesHandler(pagesService services.PagesService, pageRenderService services.PageRenderService) *PagesHandler {
 	return &PagesHandler{
-		pagesService: pagesService,
+		pagesService:      pagesService,
+		pageRenderService: pageRenderService,
 	}
 }
 
 type createPageRequest struct {
-	ProjectID         string           `json:"project_id"`
-	PageNumber        int              `json:"page_number"`
-	Title             *string          `json:"title,omitempty"`
-	CanvasWidth       *int             `json:"canvas_width,omitempty"`
-	CanvasHeight      *int             `json:"canvas_height,omitempty"`
-	BackgroundColor   *string          `json:"background_color,omitempty"`
+	ProjectID          string           `json:"project_id"`
+	PageNumber         int              `json:"page_number"`
+	Title              *string          `json:"title,omitempty"`
+	CanvasWidth        *int             `json:"canvas_width,omitempty"`
+	CanvasHeight       *int             `json:"canvas_height,omitempty"`
+	BackgroundColor    *string          `json:"background_color,omitempty"`
 	BackgroundImageURL *string          `json:"background_image_url,omitempty"`
-	BackgroundPattern *string          `json:"background_pattern,omitempty"`
-	LayoutTemplate    *json.RawMessage `json:"layout_template,omitempty"`
+	BackgroundPattern  *string          `json:"background_pattern,omitempty"`
+	LayoutTemplate     *json.RawMessage `json:"layout_template,omitempty"`
 }
 
 type updatePageRequest struct {
-	PageNumber        *int             `json:"page_number,omitempty"`
-	Title             *string          `json:"title,omitempty"`
-	CanvasWidth       *int             `json:"canvas_width,omitempty"`
-	CanvasHeight      *int             `json:"canvas_height,omitempty"`
-	BackgroundColor   *string          `json:"background_color,omitempty"`
+	PageNumber         *int             `json:"page_number,omitempty"`
+	Title              *string          `json:"title,omitempty"`
+	CanvasWidth        *int             `json:"canvas_width,omitempty"`
+	CanvasHeight       *int             `json:"canvas_height,omitempty"`
+	BackgroundColor    *string          `json:"background_color,omitempty"`
 	BackgroundImageURL *string          `json:"background_image_url,omitempty"`
-	BackgroundPattern *string          `json:"background_pattern,omitempty"`
-	LayoutTemplate    *json.RawMessage `json:"layout_template,omitempty"`
+	BackgroundPattern  *string          `json:"background_pattern,omitempty"`
+	LayoutTemplate     *json.RawMessage `json:"layout_template,omitempty"`
 }
 
 // CreatePage creates a new page for a project.
@@ -189,15 +191,15 @@ func (h *PagesHandler) UpdatePage(c *gin.Context) {
 	}
 
 	update := &models.PageUpdate{
-		ID:             pageID,
-		PageNumber:     req.PageNumber,
-		Title:          req.Title,
-		CanvasWidth:    req.CanvasWidth,
-		CanvasHeight:   req.CanvasHeight,
-		BackgroundColor: req.BackgroundColor,
+		ID:                 pageID,
+		PageNumber:         req.PageNumber,
+		Title:              req.Title,
+		CanvasWidth:        req.CanvasWidth,
+		CanvasHeight:       req.CanvasHeight,
+		BackgroundColor:    req.BackgroundColor,
 		BackgroundImageURL: req.BackgroundImageURL,
-		BackgroundPattern: req.BackgroundPattern,
-		LayoutTemplate: rawMessageValue(req.LayoutTemplate),
+		BackgroundPattern:  req.BackgroundPattern,
+		LayoutTemplate:     rawMessageValue(req.LayoutTemplate),
 	}
 
 	updated, err := h.pagesService.UpdatePage(c.Request.Context(), userID, update)
@@ -229,6 +231,59 @@ func (h *PagesHandler) DeletePage(c *gin.Context) {
 	}
 
 	utils.RespondNoContent(c)
+}
+
+// RenderPage renders a page to an image for sharing/export.
+func (h *PagesHandler) RenderPage(c *gin.Context) {
+	if h.pageRenderService == nil {
+		utils.RespondError(c, utils.ErrInternalServer("Render service unavailable", nil))
+		return
+	}
+
+	userID, _, err := getUserContext(c)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	pageID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.RespondError(c, utils.ErrBadRequest("Invalid page ID", err))
+		return
+	}
+
+	scale := parseFloatQuery(c, "scale", 2.0)
+	format := c.DefaultQuery("format", "png")
+	quality := parseIntQuery(c, "quality", 92)
+	targetWidth := parseIntQuery(c, "width", 0)
+	targetHeight := parseIntQuery(c, "height", 0)
+
+	output, contentType, err := h.pageRenderService.RenderPage(
+		c.Request.Context(),
+		userID,
+		pageID,
+		services.PageRenderOptions{
+			Scale:        scale,
+			Format:       format,
+			Quality:      quality,
+			TargetWidth:  targetWidth,
+			TargetHeight: targetHeight,
+		},
+	)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	if c.Query("download") == "1" {
+		ext := "png"
+		if contentType == "image/jpeg" {
+			ext = "jpg"
+		}
+		c.Header("Content-Disposition", "attachment; filename=page-"+pageID.String()+"."+ext)
+	}
+
+	c.Data(http.StatusOK, contentType, output)
 }
 
 func rawMessageValue(raw *json.RawMessage) json.RawMessage {

@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Colors
-  static const Color primaryColor = Color(0xFF6366F1); // Indigo
-  static const Color secondaryColor = Color(0xFF8B5CF6); // Purple
-  static const Color accentColor = Color(0xFFF59E0B); // Amber
-  static const Color backgroundColor = Color(0xFFF9FAFB);
-  static const Color surfaceColor = Color(0xFFFFFFFF);
+  static const Color primaryColor = Color(0xFFAD2A1A);
+  static const Color secondaryColor = Color(0xFF510420);
+  static const Color accentColor = Color(0xFFC05D23);
+  static const Color accentColorAlt = Color(0xFFCB7D2B);
+  static const Color accentColorAlt2 = Color(0xFFD7AD3E);
+  static const Color blackColor = Color(0xFF1B0E03);
+  static const Color whiteColor = Color(0xFFF6E8C9);
+  static const Color backgroundColor = whiteColor;
+  static const Color surfaceColor = whiteColor;
   static const Color errorColor = Color(0xFFEF4444);
   static const Color successColor = Color(0xFF10B981);
   
-  static const Color textPrimary = Color(0xFF111827);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textHint = Color(0xFF9CA3AF);
+  static const Color textPrimary = blackColor;
+  static const Color textSecondary = Color(0xFF4A2A1A);
+  static const Color textHint = Color(0xFF6E4A33);
   
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
@@ -59,7 +63,7 @@ class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: whiteColor,
         padding: const EdgeInsets.symmetric(
           horizontal: spacing24,
           vertical: spacing16,

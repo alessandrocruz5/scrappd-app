@@ -95,6 +95,54 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> requestPasswordReset({required String email}) async {
+    final response = await _dio.post(
+      ApiConstants.authForgotPassword,
+      data: {'email': email},
+    );
+    final apiResponse = ApiResponse.fromJson(
+      response.data as Map<String, dynamic>,
+      (_) => null,
+    );
+    if (!apiResponse.success) {
+      throw Exception(apiResponse.error?.message ?? 'Failed to request password reset');
+    }
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    final response = await _dio.post(
+      ApiConstants.authResetPassword,
+      data: {
+        'token': token,
+        'password': password,
+      },
+    );
+    final apiResponse = ApiResponse.fromJson(
+      response.data as Map<String, dynamic>,
+      (_) => null,
+    );
+    if (!apiResponse.success) {
+      throw Exception(apiResponse.error?.message ?? 'Failed to reset password');
+    }
+  }
+
+  Future<void> resendVerification({required String email}) async {
+    final response = await _dio.post(
+      ApiConstants.authResendVerification,
+      data: {'email': email},
+    );
+    final apiResponse = ApiResponse.fromJson(
+      response.data as Map<String, dynamic>,
+      (_) => null,
+    );
+    if (!apiResponse.success) {
+      throw Exception(apiResponse.error?.message ?? 'Failed to resend verification email');
+    }
+  }
+
   LoginPayload _parseLoginPayload(Map<String, dynamic> json) {
     final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
       json,

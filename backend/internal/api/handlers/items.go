@@ -191,6 +191,18 @@ func parseIntQuery(c *gin.Context, key string, defaultValue int) int {
 	return val
 }
 
+func parseFloatQuery(c *gin.Context, key string, defaultValue float64) float64 {
+	raw := c.Query(key)
+	if raw == "" {
+		return defaultValue
+	}
+	val, err := strconv.ParseFloat(raw, 64)
+	if err != nil || val <= 0 {
+		return defaultValue
+	}
+	return val
+}
+
 func totalPages(total, perPage int) int {
 	if perPage <= 0 {
 		return 0

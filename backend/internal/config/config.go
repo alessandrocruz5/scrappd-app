@@ -16,6 +16,8 @@ type Config struct {
 	MLService MLServiceConfig
 	Storage   StorageConfig
 	JWT       JWTConfig
+	Email     EmailConfig
+	App       AppConfig
 }
 
 type ServerConfig struct {
@@ -65,6 +67,25 @@ type JWTConfig struct {
 	RefreshTokenSecret string
 	AccessTokenExpiry  time.Duration
 	RefreshTokenExpiry time.Duration
+	VerifyTokenSecret  string
+	VerifyTokenExpiry  time.Duration
+}
+
+type EmailConfig struct {
+	Host            string
+	Port            int
+	Username        string
+	Password        string
+	FromName        string
+	FromEmail       string
+	UseTLS          bool
+	UseStartTLS     bool
+	RequireStartTLS bool
+	SkipTLSVerify   bool
+}
+
+type AppConfig struct {
+	BaseURL string
 }
 
 // Load loads configuration from environment variables
@@ -114,6 +135,23 @@ func Load() (*Config, error) {
 			RefreshTokenSecret: getEnv("JWT_REFRESH_SECRET", "your-refresh-secret-change-in-production"),
 			AccessTokenExpiry:  getDurationEnv("JWT_ACCESS_EXPIRY", 15*time.Minute),
 			RefreshTokenExpiry: getDurationEnv("JWT_REFRESH_EXPIRY", 7*24*time.Hour),
+			VerifyTokenSecret:  getEnv("JWT_VERIFY_SECRET", "your-verify-secret-change-in-production"),
+			VerifyTokenExpiry:  getDurationEnv("JWT_VERIFY_EXPIRY", 24*time.Hour),
+		},
+		Email: EmailConfig{
+			Host:            getEnv("SMTP_HOST", ""),
+			Port:            getIntEnv("SMTP_PORT", 587),
+			Username:        getEnv("SMTP_USERNAME", ""),
+			Password:        getEnv("SMTP_PASSWORD", ""),
+			FromName:        getEnv("SMTP_FROM_NAME", "Scrapp'd"),
+			FromEmail:       getEnv("SMTP_FROM_EMAIL", ""),
+			UseTLS:          getBoolEnv("SMTP_USE_TLS", false),
+			UseStartTLS:     getBoolEnv("SMTP_USE_STARTTLS", true),
+			RequireStartTLS: getBoolEnv("SMTP_REQUIRE_STARTTLS", false),
+			SkipTLSVerify:   getBoolEnv("SMTP_SKIP_TLS_VERIFY", false),
+		},
+		App: AppConfig{
+			BaseURL: getEnv("APP_BASE_URL", "http://localhost:3000"),
 		},
 	}
 
@@ -162,6 +200,15 @@ func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if duration, err := time.ParseDuration(value); err == nil {
 			return duration
+		}
+	}
+	return defaultValue
+}
+
+func getBoolEnv(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := strconv.ParseBool(value); err == nil {
+			return parsed
 		}
 	}
 	return defaultValue

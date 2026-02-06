@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
+import 'email_verification_pending_screen.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -84,6 +86,20 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text('Forgot password?'),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -146,6 +162,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                     },
                     child: const Text('Create an account'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EmailVerificationPendingScreen(
+                            email: _emailController.text.trim().isEmpty
+                                ? null
+                                : _emailController.text.trim(),
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('Resend verification email'),
                   ),
                 ],
               );

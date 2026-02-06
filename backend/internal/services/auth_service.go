@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -20,17 +23,30 @@ type AuthService interface {
 	RefreshAccessToken(ctx context.Context, refreshToken string) (*models.LoginResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error)
+	RequestPasswordReset(ctx context.Context, email string) (string, error)
+	ResetPassword(ctx context.Context, token, newPassword string) error
+	ResendVerification(ctx context.Context, email string) error
+	VerifyEmail(ctx context.Context, token string) error
 }
 
 type authService struct {
 	userRepo     repository.UserRepository
 	tokenManager *auth.TokenManager
+	emailSender  EmailSender
+	appBaseURL   string
 }
 
-func NewAuthService(userRepo repository.UserRepository, tokenManager *auth.TokenManager) AuthService {
+func NewAuthService(
+	userRepo repository.UserRepository,
+	tokenManager *auth.TokenManager,
+	emailSender EmailSender,
+	appBaseURL string,
+) AuthService {
 	return &authService{
 		userRepo:     userRepo,
 		tokenManager: tokenManager,
+		emailSender:  emailSender,
+		appBaseURL:   appBaseURL,
 	}
 }
 
@@ -209,8 +225,163 @@ func (s *authService) GetUserByID(ctx context.Context, userID uuid.UUID) (*model
 	return s.userRepo.GetByID(ctx, userID)
 }
 
+func (s *authService) RequestPasswordReset(ctx context.Context, email string) (string, error) {
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		var appErr *utils.AppError
+		if errors.As(err, &appErr) && appErr.Code == utils.ErrCodeNotFound {
+			// Return success for unknown emails to avoid account enumeration.
+			return "", nil
+		}
+		return "", err
+	}
+
+	rawToken, err := generateResetToken()
+	if err != nil {
+		return "", utils.ErrInternalServer("Failed to generate reset token", err)
+	}
+
+	reset := &models.PasswordReset{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		TokenHash: hashToken(rawToken),
+		ExpiresAt: time.Now().Add(30 * time.Minute),
+	}
+	if err := s.userRepo.CreatePasswordReset(ctx, reset); err != nil {
+		return "", err
+	}
+
+	if err := s.sendPasswordResetEmail(ctx, user.Email, rawToken, reset.ExpiresAt); err != nil {
+		return "", utils.ErrServiceUnavailable("email", err)
+	}
+
+	return rawToken, nil
+}
+
+func (s *authService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	reset, err := s.userRepo.GetActivePasswordResetByTokenHash(ctx, hashToken(token))
+	if err != nil {
+		return err
+	}
+
+	hashedPassword, err := auth.HashPassword(newPassword)
+	if err != nil {
+		return utils.ErrInternalServer("Failed to hash password", err)
+	}
+
+	if err := s.userRepo.UpdatePasswordHash(ctx, reset.UserID, hashedPassword); err != nil {
+		return err
+	}
+	if err := s.userRepo.MarkPasswordResetUsed(ctx, reset.ID); err != nil {
+		return err
+	}
+
+	// Invalidate all active sessions after password reset.
+	if err := s.userRepo.RevokeAllUserTokens(ctx, reset.UserID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *authService) ResendVerification(ctx context.Context, email string) error {
+	_, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		var appErr *utils.AppError
+		if errors.As(err, &appErr) && appErr.Code == utils.ErrCodeNotFound {
+			// Return success for unknown emails to avoid account enumeration.
+			return nil
+		}
+		return err
+	}
+
+	if err := s.sendVerificationEmail(ctx, email); err != nil {
+		return utils.ErrServiceUnavailable("email", err)
+	}
+
+	return nil
+}
+
+func (s *authService) VerifyEmail(ctx context.Context, token string) error {
+	claims, err := s.tokenManager.ValidateVerifyToken(token)
+	if err != nil {
+		return utils.ErrUnauthorized("Invalid or expired verification token", err)
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return utils.ErrBadRequest("Invalid verification token", err)
+	}
+
+	return s.userRepo.MarkEmailVerified(ctx, userID)
+}
+
 // hashToken creates a SHA-256 hash of the token for storage
 func hashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
+}
+
+func generateResetToken() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+func (s *authService) sendPasswordResetEmail(
+	ctx context.Context,
+	email string,
+	token string,
+	expiresAt time.Time,
+) error {
+	if s.emailSender == nil {
+		return nil
+	}
+
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.appBaseURL, token)
+	body := fmt.Sprintf(
+		"Hi,\n\nWe received a request to reset your Scrapp'd password.\n\n"+
+			"Reset link: %s\n\n"+
+			"Reset token: %s\n\n"+
+			"This token expires at %s.\n\nIf you didn't request this, you can ignore this email.",
+		resetLink,
+		token,
+		expiresAt.Format(time.RFC1123),
+	)
+
+	return s.emailSender.Send(ctx, email, "Reset your Scrapp'd password", body)
+}
+
+func (s *authService) sendVerificationEmail(ctx context.Context, email string) error {
+	if s.emailSender == nil {
+		return nil
+	}
+
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		var appErr *utils.AppError
+		if errors.As(err, &appErr) && appErr.Code == utils.ErrCodeNotFound {
+			return nil
+		}
+		return err
+	}
+
+	token, err := s.tokenManager.GenerateVerifyToken(user.ID)
+	if err != nil {
+		return err
+	}
+
+	verifyLink := fmt.Sprintf("%s/verify-email?token=%s", s.appBaseURL, token)
+	body := fmt.Sprintf(
+		"Hi,\n\nPlease verify your Scrapp'd email.\n\n"+
+			"Verification link: %s\n\n"+
+			"Verification token: %s\n\n"+
+			"If you didn't request this, you can ignore this email.",
+		verifyLink,
+		token,
+	)
+
+	return s.emailSender.Send(ctx, email, "Verify your Scrapp'd email", body)
 }

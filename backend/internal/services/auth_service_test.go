@@ -57,6 +57,11 @@ func (m *MockUserRepository) UpdateLastLogin(ctx context.Context, userID uuid.UU
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
 func (m *MockUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
@@ -85,10 +90,33 @@ func (m *MockUserRepository) RevokeAllUserTokens(ctx context.Context, userID uui
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) CreatePasswordReset(ctx context.Context, reset *models.PasswordReset) error {
+	args := m.Called(ctx, reset)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetActivePasswordResetByTokenHash(ctx context.Context, tokenHash string) (*models.PasswordReset, error) {
+	args := m.Called(ctx, tokenHash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.PasswordReset), args.Error(1)
+}
+
+func (m *MockUserRepository) MarkPasswordResetUsed(ctx context.Context, resetID uuid.UUID) error {
+	args := m.Called(ctx, resetID)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) UpdatePasswordHash(ctx context.Context, userID uuid.UUID, passwordHash string) error {
+	args := m.Called(ctx, userID, passwordHash)
+	return args.Error(0)
+}
+
 func TestAuthService_Register_Success(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
-	service := NewAuthService(mockRepo, tokenManager)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	service := NewAuthService(mockRepo, tokenManager, NoopEmailSender{}, "http://localhost:3000")
 
 	ctx := context.Background()
 	req := &models.CreateUserRequest{
@@ -113,8 +141,8 @@ func TestAuthService_Register_Success(t *testing.T) {
 
 func TestAuthService_Login_Success(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
-	service := NewAuthService(mockRepo, tokenManager)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	service := NewAuthService(mockRepo, tokenManager, NoopEmailSender{}, "http://localhost:3000")
 
 	ctx := context.Background()
 	password := "password123"
@@ -149,8 +177,8 @@ func TestAuthService_Login_Success(t *testing.T) {
 
 func TestAuthService_Login_WrongPassword(t *testing.T) {
 	mockRepo := new(MockUserRepository)
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
-	service := NewAuthService(mockRepo, tokenManager)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	service := NewAuthService(mockRepo, tokenManager, NoopEmailSender{}, "http://localhost:3000")
 
 	ctx := context.Background()
 	hashedPassword, _ := auth.HashPassword("correctpassword")
@@ -172,5 +200,65 @@ func TestAuthService_Login_WrongPassword(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, response)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestAuthService_RequestPasswordReset_Success(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	service := NewAuthService(mockRepo, tokenManager, NoopEmailSender{}, "http://localhost:3000")
+
+	ctx := context.Background()
+	user := &models.User{
+		ID:    uuid.New(),
+		Email: "test@example.com",
+	}
+
+	mockRepo.On("GetByEmail", ctx, user.Email).Return(user, nil)
+	mockRepo.On("CreatePasswordReset", ctx, mock.AnythingOfType("*models.PasswordReset")).Return(nil)
+
+	token, err := service.RequestPasswordReset(ctx, user.Email)
+	require.NoError(t, err)
+	assert.NotEmpty(t, token)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestAuthService_ResetPassword_Success(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	service := NewAuthService(mockRepo, tokenManager, NoopEmailSender{}, "http://localhost:3000")
+
+	ctx := context.Background()
+	userID := uuid.New()
+	resetID := uuid.New()
+	token := "sample-reset-token"
+
+	mockRepo.On("GetActivePasswordResetByTokenHash", ctx, mock.AnythingOfType("string")).Return(&models.PasswordReset{
+		ID:     resetID,
+		UserID: userID,
+	}, nil)
+	mockRepo.On("UpdatePasswordHash", ctx, userID, mock.AnythingOfType("string")).Return(nil)
+	mockRepo.On("MarkPasswordResetUsed", ctx, resetID).Return(nil)
+	mockRepo.On("RevokeAllUserTokens", ctx, userID).Return(nil)
+
+	err := service.ResetPassword(ctx, token, "newpassword123")
+	require.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestAuthService_VerifyEmail_Success(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	service := NewAuthService(mockRepo, tokenManager, NoopEmailSender{}, "http://localhost:3000")
+
+	ctx := context.Background()
+	userID := uuid.New()
+	verifyToken, err := tokenManager.GenerateVerifyToken(userID)
+	require.NoError(t, err)
+
+	mockRepo.On("MarkEmailVerified", ctx, userID).Return(nil)
+
+	err = service.VerifyEmail(ctx, verifyToken)
+	require.NoError(t, err)
 	mockRepo.AssertExpectations(t)
 }

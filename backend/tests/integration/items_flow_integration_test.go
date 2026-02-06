@@ -143,6 +143,7 @@ func TestItemsFlow_Integration(t *testing.T) {
 	pagesService := services.NewPagesService(pagesRepo)
 	projectsService := services.NewProjectsService(projectsRepo)
 	pageItemsService := services.NewPageItemsService(pageItemsRepo)
+	pageRenderService := services.NewPageRenderService(pagesRepo, pageItemsRepo, itemsRepo, storage)
 
 	router := api.SetupRouter(
 		mlClient,
@@ -151,6 +152,7 @@ func TestItemsFlow_Integration(t *testing.T) {
 		projectsService,
 		pagesService,
 		pageItemsService,
+		pageRenderService,
 		usageService,
 		db,
 		&stubRedis{},

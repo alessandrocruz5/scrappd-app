@@ -17,6 +17,7 @@ func SetupRouter(
 	projectsService services.ProjectsService,
 	pagesService services.PagesService,
 	pageItemsService services.PageItemsService,
+	pageRenderService services.PageRenderService,
 	usageService services.UsageService,
 	dbHealth handlers.DBHealthChecker,
 	redisHealth handlers.RedisHealthChecker,
@@ -39,7 +40,7 @@ func SetupRouter(
 	authHandler := handlers.NewAuthHandler(authService)
 	itemsHandler := handlers.NewItemsHandler(itemsService)
 	projectsHandler := handlers.NewProjectsHandler(projectsService)
-	pagesHandler := handlers.NewPagesHandler(pagesService)
+	pagesHandler := handlers.NewPagesHandler(pagesService, pageRenderService)
 	pageItemsHandler := handlers.NewPageItemsHandler(pageItemsService)
 
 	// Root level health checks
@@ -65,6 +66,10 @@ func SetupRouter(
 			authRoutes.POST("/login", authHandler.Login)
 			authRoutes.POST("/refresh", authHandler.RefreshToken)
 			authRoutes.POST("/logout", authHandler.Logout)
+			authRoutes.POST("/forgot-password", authHandler.ForgotPassword)
+			authRoutes.POST("/reset-password", authHandler.ResetPassword)
+			authRoutes.POST("/resend-verification", authHandler.ResendVerification)
+			authRoutes.POST("/verify-email", authHandler.VerifyEmail)
 
 			// Protected auth routes
 			authRoutes.GET("/me", middleware.AuthMiddleware(tokenManager), authHandler.GetMe)
@@ -103,6 +108,7 @@ func SetupRouter(
 			pagesRoutes.POST("", pagesHandler.CreatePage)
 			pagesRoutes.GET("", pagesHandler.ListPages)
 			pagesRoutes.GET("/:id", pagesHandler.GetPage)
+			pagesRoutes.GET("/:id/render", pagesHandler.RenderPage)
 			pagesRoutes.PATCH("/:id", pagesHandler.UpdatePage)
 			pagesRoutes.DELETE("/:id", pagesHandler.DeletePage)
 			pagesRoutes.GET("/:id/items", pageItemsHandler.ListPageItems)

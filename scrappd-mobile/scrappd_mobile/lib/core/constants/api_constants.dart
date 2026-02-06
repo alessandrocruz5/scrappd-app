@@ -16,18 +16,21 @@ class ApiConstants {
   static const String healthDeep = '/health/deep';
   
   // Auth endpoints
-  static const String authRegister = '/auth/register';
-  static const String authLogin = '/auth/login';
-  static const String authRefresh = '/auth/refresh';
-  static const String authLogout = '/auth/logout';
+  static const String authRegister = '$apiVersion/auth/register';
+  static const String authLogin = '$apiVersion/auth/login';
+  static const String authRefresh = '$apiVersion/auth/refresh';
+  static const String authLogout = '$apiVersion/auth/logout';
+  static const String authForgotPassword = '$apiVersion/auth/forgot-password';
+  static const String authResetPassword = '$apiVersion/auth/reset-password';
+  static const String authResendVerification = '$apiVersion/auth/resend-verification';
   
   // User endpoints
-  static String get me => '$apiVersion/me';
-  static String get authMe => '$apiVersion/me';
-  static String get usage => '$apiVersion/usage';
+  static const String authMe = '$apiVersion/auth/me';
+  static const String me = authMe;
+  static const String usage = '$apiVersion/usage';
 
   // Projects endpoints
-  static String get projects => '$apiVersion/projects';
+  static const String projects = '$apiVersion/projects';
   static String projectById(String id) => '$apiVersion/projects/$id';
 
   // ML Processing endpoints
@@ -42,6 +45,7 @@ class ApiConstants {
   static String get pages => '$apiVersion/pages';
   static String pageById(String id) => '$apiVersion/pages/$id';
   static String pageItems(String pageId) => '$apiVersion/pages/$pageId/items';
+  static String pageRender(String pageId) => '$apiVersion/pages/$pageId/render';
   
   // Timeouts from environment
   static Duration get connectionTimeout => EnvironmentConfig.connectionTimeout;
