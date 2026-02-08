@@ -113,7 +113,7 @@ func main() {
 		Addr:         fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port),
 		Handler:      router,
 		ReadTimeout:  120 * time.Second, // Allow time for large uploads
-		WriteTimeout: 120 * time.Second, // Allow time for ML processing + response
+		WriteTimeout: 300 * time.Second, // Allow time for ML processing + response
 		IdleTimeout:  240 * time.Second,
 	}
 
