@@ -19,6 +19,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -141,9 +152,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           ? null
                                           : _displayNameController.text.trim(),
                                     );
-                                    if (context.mounted &&
-                                        authProvider.status ==
-                                            AuthStatus.authenticated) {
+                                    if (!context.mounted) return;
+                                    final errorMessage =
+                                        authProvider.errorMessage;
+                                    if (errorMessage != null) {
+                                      _showError(errorMessage);
+                                      return;
+                                    }
+                                    if (authProvider.status ==
+                                        AuthStatus.authenticated) {
                                       Navigator.pop(context);
                                     }
                                   },

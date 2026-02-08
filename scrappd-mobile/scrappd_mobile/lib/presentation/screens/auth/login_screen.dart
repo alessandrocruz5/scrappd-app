@@ -19,6 +19,17 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -137,6 +148,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 email: _emailController.text.trim(),
                                 password: _passwordController.text,
                               );
+                              if (!mounted) return;
+                              final errorMessage = authProvider.errorMessage;
+                              if (errorMessage != null) {
+                                _showError(errorMessage);
+                              }
                             },
                       child: authProvider.isLoading
                           ? const SizedBox(

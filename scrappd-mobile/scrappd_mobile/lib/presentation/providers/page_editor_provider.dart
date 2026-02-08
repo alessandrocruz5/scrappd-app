@@ -4,6 +4,7 @@ import '../../domain/entities/page.dart' as page_entity;
 import '../../domain/entities/page_item.dart';
 import '../../domain/repositories/page_item_repository.dart';
 import '../../domain/repositories/page_repository.dart';
+import '../../core/network/error_helpers.dart';
 
 class PageEditorProvider extends ChangeNotifier {
   PageEditorProvider(this._pageRepository, this._pageItemRepository);
@@ -40,7 +41,10 @@ class PageEditorProvider extends ChangeNotifier {
       );
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to load page.',
+      );
     } finally {
       _setLoading(false);
     }
@@ -69,7 +73,10 @@ class PageEditorProvider extends ChangeNotifier {
       notifyListeners();
       return item;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to add item.',
+      );
       notifyListeners();
       return null;
     }
@@ -122,7 +129,10 @@ class PageEditorProvider extends ChangeNotifier {
           .toList();
       notifyListeners();
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to update item.',
+      );
       notifyListeners();
     }
   }
@@ -137,7 +147,10 @@ class PageEditorProvider extends ChangeNotifier {
       _pageItems = _pageItems.where((item) => item.id != pageItemId).toList();
       notifyListeners();
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to delete item.',
+      );
       notifyListeners();
     }
   }

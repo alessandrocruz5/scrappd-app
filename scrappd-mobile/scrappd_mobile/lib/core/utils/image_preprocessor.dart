@@ -26,6 +26,7 @@ class ImageTooLargeException implements Exception {
 }
 
 class ImagePreprocessor {
+  static const bool enforceLimits = false;
   static const int maxDimension = 4096;
   static const int maxBytes = ApiConstants.maxFileSize;
   static const int _startQuality = 92;
@@ -33,6 +34,10 @@ class ImagePreprocessor {
 
   /// Compresses/resizes images that exceed the backend size limit.
   static Future<File> prepareForUpload(File input) async {
+    if (!enforceLimits) {
+      return input;
+    }
+
     final inputSize = await input.length();
     if (inputSize <= maxBytes) {
       return input;
@@ -68,14 +73,6 @@ class ImagePreprocessor {
       } else {
         targetDim = (targetDim * 0.8).round();
       }
-    }
-
-    final finalSize = await current.length();
-    if (finalSize > maxBytes) {
-      throw ImageTooLargeException(
-        maxBytes: maxBytes,
-        actualBytes: finalSize,
-      );
     }
 
     return current;

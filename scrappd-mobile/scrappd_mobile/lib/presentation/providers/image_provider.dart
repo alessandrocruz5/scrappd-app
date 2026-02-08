@@ -44,8 +44,8 @@ class ImageProcessingProvider extends ChangeNotifier {
   bool get isProcessing => _state == ProcessingState.processing || 
                            _state == ProcessingState.uploading;
 
-  // Max image dimension for capture/pick (preprocessor enforces size limit)
-  static final double _maxImageDimension = ImagePreprocessor.maxDimension.toDouble();
+  // No max dimension cap while limits are disabled.
+  static const double? _maxImageDimension = null;
 
   /// Pick image from camera
   Future<void> pickFromCamera() async {

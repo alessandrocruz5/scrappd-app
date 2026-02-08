@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/theme_constants.dart';
+import '../../../core/network/dio_error_mapper.dart';
+import '../../../core/network/friendly_exception.dart';
 import '../../../data/datasources/auth_remote_datasource.dart';
 
 class EmailVerificationPendingScreen extends StatefulWidget {
@@ -60,8 +62,18 @@ class _EmailVerificationPendingScreenState
   }
 
   String _friendlyError(Object error) {
+    if (error is FriendlyException && error.statusCode == 404) {
+      return 'Email verification is not enabled on the backend yet.';
+    }
     if (error is DioException && error.response?.statusCode == 404) {
       return 'Email verification is not enabled on the backend yet.';
+    }
+    if (error is DioException) {
+      final result = DioErrorMapper.map(
+        error,
+        defaultMessage: 'Failed to resend verification email.',
+      );
+      return result.message;
     }
     return error.toString();
   }

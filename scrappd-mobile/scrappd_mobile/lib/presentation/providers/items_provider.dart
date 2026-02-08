@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/item.dart';
 import '../../domain/repositories/item_repository.dart';
 import '../../core/utils/image_preprocessor.dart';
+import '../../core/network/error_helpers.dart';
 
 enum UploadState {
   idle,
@@ -57,7 +58,10 @@ class ItemsProvider extends ChangeNotifier {
       _totalPages = result.totalPages;
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to load items.',
+      );
     } finally {
       _setLoading(false);
     }
@@ -94,7 +98,10 @@ class ItemsProvider extends ChangeNotifier {
       _uploadState = UploadState.error;
       _stopTimer();
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Upload failed. Please try again.',
+      );
       _uploadState = UploadState.error;
       _stopTimer();
     } finally {
