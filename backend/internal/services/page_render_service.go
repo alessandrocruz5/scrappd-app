@@ -146,7 +146,8 @@ func (s *pageRenderService) RenderPage(ctx context.Context, userID, pageID uuid.
 			continue
 		}
 
-		resized := imaging.Resize(decoded, targetW, targetH, imaging.Lanczos)
+		// Match the editor's BoxFit.cover behavior to avoid aspect ratio warping.
+		resized := imaging.Fill(decoded, targetW, targetH, imaging.Center, imaging.Lanczos)
 		angleDeg := pageItem.Rotation * 180 / math.Pi
 		rotated := imaging.Rotate(resized, angleDeg, color.Transparent)
 

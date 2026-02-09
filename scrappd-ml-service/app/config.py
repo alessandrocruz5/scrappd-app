@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Performance controls
     max_dim: int = 1600  # Max width/height; set 0 to disable
     max_pixels: int = 2_000_000  # Max total pixels; set 0 to disable
+    # Output controls
+    trim_transparent: bool = True  # Crop transparent borders
+    alpha_threshold: int = 5  # 0-255; pixels <= threshold are treated as transparent
     
     class Config:
         env_file = ".env"

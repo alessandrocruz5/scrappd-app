@@ -51,6 +51,20 @@ class BackgroundRemover:
         
         # Remove background
         output_image = remove(input_image, session=self.session)
+
+        # Ensure alpha channel for trimming
+        if output_image.mode != "RGBA":
+            output_image = output_image.convert("RGBA")
+
+        # Trim transparent borders to shrink output dimensions
+        if settings.trim_transparent:
+            alpha = output_image.split()[-1]
+            threshold = max(0, min(255, settings.alpha_threshold))
+            if threshold > 0:
+                alpha = alpha.point(lambda p: 255 if p > threshold else 0)
+            bbox = alpha.getbbox()
+            if bbox:
+                output_image = output_image.crop(bbox)
         
         # Convert back to bytes
         output_buffer = io.BytesIO()
