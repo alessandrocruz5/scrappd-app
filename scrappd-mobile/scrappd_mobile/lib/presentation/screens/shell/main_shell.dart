@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../items/create_item_screen.dart';
 import '../items/items_gallery_screen.dart';

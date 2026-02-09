@@ -138,7 +138,7 @@ func TestItemsFlow_Integration(t *testing.T) {
 	usageService := services.NewUsageService(usageRepo)
 	mlClient := &stubMLClient{}
 	storage := newInMemoryStorage()
-	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage)
+	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage, false)
 	authService := services.NewAuthService(userRepo, tokenManager)
 	pagesService := services.NewPagesService(pagesRepo)
 	projectsService := services.NewProjectsService(projectsRepo)

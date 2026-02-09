@@ -33,14 +33,22 @@ type itemsService struct {
 	usageService UsageService
 	mlClient     MLClient
 	storage      Storage
+	bypassUsageLimits bool
 }
 
-func NewItemsService(itemsRepo repository.ItemsRepository, usageService UsageService, mlClient MLClient, storage Storage) ItemsService {
+func NewItemsService(
+	itemsRepo repository.ItemsRepository,
+	usageService UsageService,
+	mlClient MLClient,
+	storage Storage,
+	bypassUsageLimits bool,
+) ItemsService {
 	return &itemsService{
 		itemsRepo:    itemsRepo,
 		usageService: usageService,
 		mlClient:     mlClient,
 		storage:      storage,
+		bypassUsageLimits: bypassUsageLimits,
 	}
 }
 
@@ -53,12 +61,14 @@ func (s *itemsService) CreateItem(ctx context.Context, userID uuid.UUID, tier mo
 		return nil, err
 	}
 
-	canProcess, _, err := s.usageService.CheckAndIncrementUsage(ctx, userID, tier)
-	if err != nil {
-		return nil, err
-	}
-	if !canProcess {
-		return nil, utils.ErrRateLimitExceeded("Usage limit exceeded")
+	if !s.bypassUsageLimits {
+		canProcess, _, err := s.usageService.CheckAndIncrementUsage(ctx, userID, tier)
+		if err != nil {
+			return nil, err
+		}
+		if !canProcess {
+			return nil, utils.ErrRateLimitExceeded("Usage limit exceeded")
+		}
 	}
 
 	file, err := fileHeader.Open()

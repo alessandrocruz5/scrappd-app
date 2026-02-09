@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # Image processing settings
     max_image_size: int = 10 * 1024 * 1024  # 10MB
     allowed_formats: list = ["image/jpeg", "image/png", "image/jpg"]
+    # Performance controls
+    max_dim: int = 1600  # Max width/height; set 0 to disable
+    max_pixels: int = 2_000_000  # Max total pixels; set 0 to disable
     
     class Config:
         env_file = ".env"

@@ -166,7 +166,7 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
                 ),
                 const SizedBox(height: AppTheme.spacing16),
                 DropdownButtonFormField<String>(
-                  value: _format,
+                  initialValue: _format,
                   decoration: const InputDecoration(labelText: 'Output format'),
                   items: const [
                     DropdownMenuItem(value: 'png', child: Text('PNG')),

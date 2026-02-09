@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:scrappd_mobile/core/config/environment.dart';
@@ -29,9 +30,15 @@ import 'presentation/screens/shell/root_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  final bool shouldInitFirebase =
+      kIsWeb || defaultTargetPlatform != TargetPlatform.linux;
+  if (shouldInitFirebase) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } else {
+    debugPrint('Skipping Firebase init: not configured for Linux.');
+  }
   
   // Initialize environment configuration
   EnvironmentConfig.initialize();

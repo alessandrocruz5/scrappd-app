@@ -230,7 +230,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     ),
                     const SizedBox(height: AppTheme.spacing12),
                     DropdownButtonFormField<String>(
-                      value: format,
+                      initialValue: format,
                       decoration: const InputDecoration(labelText: 'Format'),
                       items: const [
                         DropdownMenuItem(value: 'jpeg', child: Text('JPEG')),
@@ -244,7 +244,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     ),
                     const SizedBox(height: AppTheme.spacing12),
                     DropdownButtonFormField<int>(
-                      value: quality,
+                      initialValue: quality,
                       decoration: const InputDecoration(labelText: 'Quality'),
                       items: const [
                         DropdownMenuItem(value: 85, child: Text('85')),
@@ -466,7 +466,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedProjectId,
+                  initialValue: _selectedProjectId,
                   decoration: const InputDecoration(
                     labelText: 'Project',
                   ),

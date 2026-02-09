@@ -86,6 +86,7 @@ type EmailConfig struct {
 
 type AppConfig struct {
 	BaseURL string
+	BypassUsageLimits bool
 }
 
 // Load loads configuration from environment variables
@@ -151,7 +152,8 @@ func Load() (*Config, error) {
 			SkipTLSVerify:   getBoolEnv("SMTP_SKIP_TLS_VERIFY", false),
 		},
 		App: AppConfig{
-			BaseURL: getEnv("APP_BASE_URL", "http://localhost:3000"),
+			BaseURL:           getEnv("APP_BASE_URL", "http://localhost:3000"),
+			BypassUsageLimits: getBoolEnv("BYPASS_USAGE_LIMITS", false),
 		},
 	}
 

@@ -83,7 +83,13 @@ func main() {
 	}
 	defer redisClient.Close()
 
-	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage)
+	itemsService := services.NewItemsService(
+		itemsRepo,
+		usageService,
+		mlClient,
+		storage,
+		cfg.App.BypassUsageLimits,
+	)
 	pagesService := services.NewPagesService(pagesRepo)
 	projectsService := services.NewProjectsService(projectsRepo)
 	pageItemsService := services.NewPageItemsService(pageItemsRepo)

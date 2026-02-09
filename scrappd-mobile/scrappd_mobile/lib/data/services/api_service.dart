@@ -47,6 +47,18 @@ class ApiService {
       },
       onError: (error, handler) {
         debugPrint('❌ ${error.type}: ${error.message}');
+        final status = error.response?.statusCode;
+        if (status != null) {
+          debugPrint('❌ HTTP $status ${error.requestOptions.method} ${error.requestOptions.uri}');
+        }
+        if (status == 429) {
+          final headers = error.response?.headers.map;
+          debugPrint('🛑 429 headers: ${headers ?? {}}');
+          final data = error.response?.data;
+          if (data != null) {
+            debugPrint('🛑 429 body: $data');
+          }
+        }
         handler.next(error);
       },
     );

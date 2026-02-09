@@ -168,7 +168,7 @@ func TestItemsService_CreateItem_Success(t *testing.T) {
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	service := NewItemsService(repo, usage, ml, storage, false)
 
 	ctx := context.Background()
 	userID := uuid.New()
@@ -211,7 +211,7 @@ func TestItemsService_CreateItem_UsageExceeded(t *testing.T) {
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	service := NewItemsService(repo, usage, ml, storage, false)
 
 	ctx := context.Background()
 	userID := uuid.New()
@@ -234,7 +234,7 @@ func TestItemsService_ListItems_SignsURLs(t *testing.T) {
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	service := NewItemsService(repo, usage, ml, storage, false)
 
 	ctx := context.Background()
 	userID := uuid.New()
@@ -267,7 +267,7 @@ func TestItemsService_DeleteItem_DeletesStorage(t *testing.T) {
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	service := NewItemsService(repo, usage, ml, storage, false)
 
 	ctx := context.Background()
 	userID := uuid.New()
