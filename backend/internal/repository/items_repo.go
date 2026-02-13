@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/database"
 	"github.com/alessandrocruz5/scrappd-app/backend/internal/models"
@@ -15,6 +16,10 @@ type ItemsRepository interface {
 	ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.Item, int, error)
 	GetByID(ctx context.Context, userID, itemID uuid.UUID) (*models.Item, error)
 	SoftDelete(ctx context.Context, userID, itemID uuid.UUID) (*models.Item, error)
+	UpdateProcessingStarted(ctx context.Context, userID, itemID uuid.UUID, startedAt time.Time) error
+	UpdateProcessingCompleted(ctx context.Context, userID, itemID uuid.UUID, processedKey, processedURL string, processedSize int64, modelVersion string, completedAt time.Time) (bool, error)
+	UpdateProcessingFailed(ctx context.Context, userID, itemID uuid.UUID, errorMsg string, completedAt time.Time) error
+	UpdateProcessingCancelled(ctx context.Context, userID, itemID uuid.UUID, completedAt time.Time) (bool, error)
 }
 
 type itemsRepository struct {
@@ -238,4 +243,78 @@ func (r *itemsRepository) SoftDelete(ctx context.Context, userID, itemID uuid.UU
 	}
 
 	return item, nil
+}
+
+func (r *itemsRepository) UpdateProcessingStarted(ctx context.Context, userID, itemID uuid.UUID, startedAt time.Time) error {
+	query := `
+		UPDATE content.items
+		SET processing_status = 'processing',
+			processing_started_at = $3,
+			processing_error = NULL
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+	`
+
+	_, err := r.db.Pool.Exec(ctx, query, itemID, userID, startedAt)
+	if err != nil {
+		return utils.ErrDatabase("Failed to update processing status", err)
+	}
+
+	return nil
+}
+
+func (r *itemsRepository) UpdateProcessingCompleted(ctx context.Context, userID, itemID uuid.UUID, processedKey, processedURL string, processedSize int64, modelVersion string, completedAt time.Time) (bool, error) {
+	query := `
+		UPDATE content.items
+		SET processing_status = 'completed',
+			processed_image_key = $3,
+			processed_image_url = $4,
+			processed_file_size_bytes = $5,
+			ml_model_version = $6,
+			processing_completed_at = $7,
+			processing_error = NULL
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+			AND processing_status = 'processing'
+	`
+
+	tag, err := r.db.Pool.Exec(ctx, query, itemID, userID, processedKey, processedURL, processedSize, modelVersion, completedAt)
+	if err != nil {
+		return false, utils.ErrDatabase("Failed to update processing result", err)
+	}
+
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *itemsRepository) UpdateProcessingFailed(ctx context.Context, userID, itemID uuid.UUID, errorMsg string, completedAt time.Time) error {
+	query := `
+		UPDATE content.items
+		SET processing_status = 'failed',
+			processing_error = $3,
+			processing_completed_at = $4
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+	`
+
+	_, err := r.db.Pool.Exec(ctx, query, itemID, userID, errorMsg, completedAt)
+	if err != nil {
+		return utils.ErrDatabase("Failed to update processing failure", err)
+	}
+
+	return nil
+}
+
+func (r *itemsRepository) UpdateProcessingCancelled(ctx context.Context, userID, itemID uuid.UUID, completedAt time.Time) (bool, error) {
+	query := `
+		UPDATE content.items
+		SET processing_status = 'failed',
+			processing_error = 'cancelled',
+			processing_completed_at = $3
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+			AND processing_status IN ('pending', 'processing')
+	`
+
+	tag, err := r.db.Pool.Exec(ctx, query, itemID, userID, completedAt)
+	if err != nil {
+		return false, utils.ErrDatabase("Failed to cancel processing", err)
+	}
+
+	return tag.RowsAffected() > 0, nil
 }

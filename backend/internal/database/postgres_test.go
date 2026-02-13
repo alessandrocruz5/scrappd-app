@@ -19,7 +19,7 @@ func TestNewDB_Success(t *testing.T) {
 	logger := logrus.New()
 	logger.SetOutput(io.Discard)
 
-	dsn := "host=localhost port=5432 user=scrappd_app password=scrappd-go dbname=scrappd sslmode=disable"
+	dsn := "host=localhost port=5432 user=scrappd_app password=usTiCr$9S%B5u2 dbname=scrappd sslmode=disable"
 
 	db, err := NewDB(dsn, logger)
 	require.NoError(t, err)

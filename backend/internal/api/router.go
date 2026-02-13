@@ -17,11 +17,13 @@ func SetupRouter(
 	projectsService services.ProjectsService,
 	pagesService services.PagesService,
 	pageItemsService services.PageItemsService,
+	pageRenderService services.PageRenderService,
 	usageService services.UsageService,
 	dbHealth handlers.DBHealthChecker,
 	redisHealth handlers.RedisHealthChecker,
 	storageHealth handlers.StorageHealthChecker,
 	tokenManager *auth.TokenManager,
+	internalSecret string,
 	logger *logrus.Logger,
 ) *gin.Engine {
 	router := gin.New()
@@ -38,8 +40,9 @@ func SetupRouter(
 	mlHandler := handlers.NewMLHandler(mlClient)
 	authHandler := handlers.NewAuthHandler(authService)
 	itemsHandler := handlers.NewItemsHandler(itemsService)
+	internalItemsHandler := handlers.NewInternalItemsHandler(itemsService)
 	projectsHandler := handlers.NewProjectsHandler(projectsService)
-	pagesHandler := handlers.NewPagesHandler(pagesService)
+	pagesHandler := handlers.NewPagesHandler(pagesService, pageRenderService)
 	pageItemsHandler := handlers.NewPageItemsHandler(pageItemsService)
 
 	// Root level health checks
@@ -65,6 +68,10 @@ func SetupRouter(
 			authRoutes.POST("/login", authHandler.Login)
 			authRoutes.POST("/refresh", authHandler.RefreshToken)
 			authRoutes.POST("/logout", authHandler.Logout)
+			authRoutes.POST("/forgot-password", authHandler.ForgotPassword)
+			authRoutes.POST("/reset-password", authHandler.ResetPassword)
+			authRoutes.POST("/resend-verification", authHandler.ResendVerification)
+			authRoutes.POST("/verify-email", authHandler.VerifyEmail)
 
 			// Protected auth routes
 			authRoutes.GET("/me", middleware.AuthMiddleware(tokenManager), authHandler.GetMe)
@@ -72,7 +79,7 @@ func SetupRouter(
 
 		// ML endpoints - now protected
 		mlRoutes := v1.Group("/ml")
-		mlRoutes.Use(middleware.AuthMiddleware(tokenManager))
+		mlRoutes.Use(middleware.OptionalAuthMiddleware(tokenManager))
 		{
 			mlRoutes.POST("/process", mlHandler.RemoveBackgroundFromFile)
 		}
@@ -84,6 +91,7 @@ func SetupRouter(
 			itemsRoutes.GET("", itemsHandler.ListItems)
 			itemsRoutes.GET("/usage", itemsHandler.GetUsage)
 			itemsRoutes.GET("/:id", itemsHandler.GetItem)
+			itemsRoutes.POST("/:id/cancel", itemsHandler.CancelItemProcessing)
 			itemsRoutes.DELETE("/:id", itemsHandler.DeleteItem)
 		}
 
@@ -103,6 +111,7 @@ func SetupRouter(
 			pagesRoutes.POST("", pagesHandler.CreatePage)
 			pagesRoutes.GET("", pagesHandler.ListPages)
 			pagesRoutes.GET("/:id", pagesHandler.GetPage)
+			pagesRoutes.GET("/:id/render", pagesHandler.RenderPage)
 			pagesRoutes.PATCH("/:id", pagesHandler.UpdatePage)
 			pagesRoutes.DELETE("/:id", pagesHandler.DeletePage)
 			pagesRoutes.GET("/:id/items", pageItemsHandler.ListPageItems)
@@ -137,6 +146,13 @@ func SetupRouter(
 			"routes": routeList,
 		})
 	})
+
+	// Internal task routes
+	internalRoutes := router.Group("/internal")
+	internalRoutes.Use(middleware.InternalAuthMiddleware(internalSecret))
+	{
+		internalRoutes.POST("/items/process", internalItemsHandler.ProcessItem)
+	}
 
 	return router
 }

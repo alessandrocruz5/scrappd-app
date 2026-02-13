@@ -47,7 +47,7 @@ func (h *ItemsHandler) CreateItem(c *gin.Context) {
 		return
 	}
 
-	utils.RespondCreated(c, item)
+	utils.RespondSuccess(c, http.StatusAccepted, item)
 }
 
 // ListItems returns a paginated list of items for the current user.
@@ -122,6 +122,28 @@ func (h *ItemsHandler) DeleteItem(c *gin.Context) {
 	utils.RespondNoContent(c)
 }
 
+// CancelItemProcessing cancels background processing for an item.
+func (h *ItemsHandler) CancelItemProcessing(c *gin.Context) {
+	userID, _, err := getUserContext(c)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	itemID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.RespondError(c, utils.ErrBadRequest("Invalid item ID", err))
+		return
+	}
+
+	if err := h.itemsService.CancelProcessing(c.Request.Context(), userID, itemID); err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	utils.RespondNoContent(c)
+}
+
 // GetUsage returns usage stats and rate limit headers.
 func (h *ItemsHandler) GetUsage(c *gin.Context) {
 	userID, _, err := getUserContext(c)
@@ -185,6 +207,18 @@ func parseIntQuery(c *gin.Context, key string, defaultValue int) int {
 		return defaultValue
 	}
 	val, err := strconv.Atoi(raw)
+	if err != nil || val <= 0 {
+		return defaultValue
+	}
+	return val
+}
+
+func parseFloatQuery(c *gin.Context, key string, defaultValue float64) float64 {
+	raw := c.Query(key)
+	if raw == "" {
+		return defaultValue
+	}
+	val, err := strconv.ParseFloat(raw, 64)
 	if err != nil || val <= 0 {
 		return defaultValue
 	}

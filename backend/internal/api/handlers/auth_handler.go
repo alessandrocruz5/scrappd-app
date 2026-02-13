@@ -177,3 +177,122 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 
 	utils.RespondSuccess(c, http.StatusOK, user)
 }
+
+// ForgotPassword starts password reset flow.
+// @Summary Request password reset
+// @Description Generates a password reset token for the account email
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body models.ForgotPasswordRequest true "Account email"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Router /api/v1/auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req models.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondError(c, utils.ErrBadRequest("Invalid request body", err))
+		return
+	}
+
+	resetToken, err := h.authService.RequestPasswordReset(c.Request.Context(), req.Email)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	data := gin.H{
+		"message": "If that email exists, a reset token has been generated.",
+	}
+	if gin.Mode() != gin.ReleaseMode && resetToken != "" {
+		// Helpful for local/dev until outbound email delivery is wired.
+		data["reset_token"] = resetToken
+	}
+
+	utils.RespondSuccess(c, http.StatusOK, data)
+}
+
+// ResetPassword completes password reset using a token.
+// @Summary Reset password
+// @Description Resets password with a valid reset token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body models.ResetPasswordRequest true "Reset token and new password"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /api/v1/auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req models.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondError(c, utils.ErrBadRequest("Invalid request body", err))
+		return
+	}
+
+	if err := h.authService.ResetPassword(c.Request.Context(), req.Token, req.Password); err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	utils.RespondSuccess(c, http.StatusOK, gin.H{
+		"message": "Password has been reset successfully",
+	})
+}
+
+// ResendVerification triggers email verification resend.
+// @Summary Resend verification email
+// @Description Resends account verification email if account exists
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body models.ResendVerificationRequest true "Account email"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Router /api/v1/auth/resend-verification [post]
+func (h *AuthHandler) ResendVerification(c *gin.Context) {
+	var req models.ResendVerificationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondError(c, utils.ErrBadRequest("Invalid request body", err))
+		return
+	}
+
+	if err := h.authService.ResendVerification(c.Request.Context(), req.Email); err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	utils.RespondSuccess(c, http.StatusOK, gin.H{
+		"message": "If that email exists, verification email has been sent.",
+	})
+}
+
+// VerifyEmail verifies a user's email with a token.
+// @Summary Verify email
+// @Description Verifies account email using a token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Verify token"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Router /api/v1/auth/verify-email [post]
+func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondError(c, utils.ErrBadRequest("Invalid request body", err))
+		return
+	}
+
+	if err := h.authService.VerifyEmail(c.Request.Context(), req.Token); err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	utils.RespondSuccess(c, http.StatusOK, gin.H{
+		"message": "Email verified successfully",
+	})
+}

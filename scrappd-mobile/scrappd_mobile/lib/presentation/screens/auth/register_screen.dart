@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
+import 'email_verification_pending_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,6 +18,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _usernameController = TextEditingController();
   final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+  }
 
   @override
   void dispose() {
@@ -140,9 +152,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           ? null
                                           : _displayNameController.text.trim(),
                                     );
-                                    if (context.mounted &&
-                                        authProvider.status ==
-                                            AuthStatus.authenticated) {
+                                    if (!context.mounted) return;
+                                    final errorMessage =
+                                        authProvider.errorMessage;
+                                    if (errorMessage != null) {
+                                      _showError(errorMessage);
+                                      return;
+                                    }
+                                    if (authProvider.status ==
+                                        AuthStatus.authenticated) {
                                       Navigator.pop(context);
                                     }
                                   },
@@ -160,6 +178,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   )
                                 : const Text('Create account'),
                           ),
+                        ),
+                        const SizedBox(height: AppTheme.spacing12),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EmailVerificationPendingScreen(
+                                  email: _emailController.text.trim().isEmpty
+                                      ? null
+                                      : _emailController.text.trim(),
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Already registered? Verify email'),
                         ),
                       ],
                     ),

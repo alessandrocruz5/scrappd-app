@@ -57,6 +57,19 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token    string `json:"token" binding:"required"`
+	Password string `json:"password" binding:"required,min=8"`
+}
+
+type ResendVerificationRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID  `json:"id"`
 	UserID    uuid.UUID  `json:"user_id"`
@@ -64,4 +77,13 @@ type RefreshToken struct {
 	ExpiresAt time.Time  `json:"expires_at"`
 	CreatedAt time.Time  `json:"created_at"`
 	RevokedAt *time.Time `json:"revoked_at,omitempty"`
+}
+
+type PasswordReset struct {
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	TokenHash string     `json:"-"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
 }

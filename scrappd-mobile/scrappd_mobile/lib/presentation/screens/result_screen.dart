@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:gal/gal.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../../core/constants/theme_constants.dart';
 import '../providers/image_provider.dart';
 import '../widgets/custom_button.dart';
@@ -228,6 +230,11 @@ class _ResultScreenState extends State<ResultScreen> {
 
   Future<void> _saveImage(BuildContext context, File imageFile) async {
     try {
+      if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+        throw Exception(
+          'Saving to gallery is only supported on Android and iOS.',
+        );
+      }
       await Gal.putImage(imageFile.path);
   
       if (context.mounted) {
@@ -240,9 +247,12 @@ class _ResultScreenState extends State<ResultScreen> {
       }
     } catch (e) {
       if (context.mounted) {
+        final message = e is MissingPluginException
+            ? 'Save failed. Please fully restart the app after adding plugins.'
+            : 'Failed to save: $e';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save: $e'),
+            content: Text(message),
             backgroundColor: AppTheme.errorColor,
           ),
         );

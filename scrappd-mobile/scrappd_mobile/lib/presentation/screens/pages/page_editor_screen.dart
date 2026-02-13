@@ -1,12 +1,20 @@
 import 'dart:math' as math;
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:gal/gal.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/constants/theme_constants.dart';
 import '../../providers/items_provider.dart';
 import '../../providers/page_editor_provider.dart';
 import '../../providers/projects_provider.dart';
+import '../../../data/services/page_export_service.dart';
+import '../../../domain/entities/page.dart' as page_entity;
 
 class PageEditorScreen extends StatefulWidget {
   const PageEditorScreen({super.key});
@@ -28,6 +36,32 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
   double _widthStart = _baseItemSize;
   double _heightStart = _baseItemSize;
   double _rotationStart = 0.0;
+  bool _isExporting = false;
+
+  Future<bool> _confirmAction({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
 
   @override
   void initState() {
@@ -80,17 +114,193 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     final item = itemsProvider.items[index];
                     final imageUrl =
                         item.processedImageUrl ?? item.originalImageUrl;
+                    final isProcessing = item.processingStatus != 'completed';
                     return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        _addItem(item.id, canvasSize);
-                      },
+                      onTap: isProcessing
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              _addItem(item.id, canvasSize);
+                            },
                       child: ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusMedium),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusMedium,
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ColorFiltered(
+                              colorFilter: isProcessing
+                                  ? const ColorFilter.mode(
+                                      Colors.grey,
+                                      BlendMode.saturation,
+                                    )
+                                  : const ColorFilter.mode(
+                                      Colors.transparent,
+                                      BlendMode.multiply,
+                                    ),
+                              child: Image.network(imageUrl, fit: BoxFit.cover),
+                            ),
+                            if (isProcessing)
+                              Positioned.fill(
+                                child: Container(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Container(
+                                      height: 26,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: item.processingStatus == 'failed'
+                                            ? AppTheme.errorColor.withValues(
+                                                alpha: 0.9,
+                                              )
+                                            : Colors.black.withValues(
+                                                alpha: 0.75,
+                                              ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              item.processingStatus == 'failed'
+                                                  ? 'Failed'
+                                                  : 'Processing...',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Row(
+                                            children: [
+                                              if (item.processingStatus ==
+                                                  'failed')
+                                                TextButton(
+                                                  onPressed: () => itemsProvider
+                                                      .retryItem(item),
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                        ),
+                                                    minimumSize: const Size(
+                                                      0,
+                                                      22,
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    'Retry',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                )
+                                              else
+                                                TextButton(
+                                                  onPressed: () async {
+                                                    final ok = await _confirmAction(
+                                                      title:
+                                                          'Cancel processing?',
+                                                      message:
+                                                          'This stops background removal and keeps the original.',
+                                                      confirmLabel: 'Cancel',
+                                                    );
+                                                    if (ok) {
+                                                      await itemsProvider
+                                                          .cancelItem(item.id);
+                                                    }
+                                                  },
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                        ),
+                                                    minimumSize: const Size(
+                                                      0,
+                                                      22,
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    'Cancel',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              const SizedBox(width: 4),
+                                              TextButton(
+                                                onPressed: () async {
+                                                  final ok = await _confirmAction(
+                                                    title: 'Delete item?',
+                                                    message:
+                                                        'This will remove the item.',
+                                                    confirmLabel: 'Delete',
+                                                  );
+                                                  if (ok) {
+                                                    await itemsProvider
+                                                        .deleteItem(item.id);
+                                                  }
+                                                },
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                      ),
+                                                  minimumSize: const Size(
+                                                    0,
+                                                    22,
+                                                  ),
+                                                ),
+                                                child: const Text(
+                                                  'Delete',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (item.processingStatus !=
+                                                  'failed') ...[
+                                                const SizedBox(width: 4),
+                                                SizedBox(
+                                                  width: 40,
+                                                  child:
+                                                      LinearProgressIndicator(
+                                                        color: Colors.white,
+                                                        backgroundColor: Colors
+                                                            .white
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                        minHeight: 3,
+                                                      ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     );
@@ -129,6 +339,263 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
     });
   }
 
+  Future<void> _showExportSheet() async {
+    final currentPage = context.read<PageEditorProvider>().currentPage;
+    if (currentPage == null || _isExporting) return;
+
+    final presets = _ExportPreset.defaults;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            child: ListView(
+              padding: const EdgeInsets.all(AppTheme.spacing16),
+              children: [
+                const SizedBox(height: AppTheme.spacing8),
+                const Text(
+                  'Export page',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                const SizedBox(height: AppTheme.spacing12),
+                ...presets.map(
+                  (preset) => ListTile(
+                    title: Text(preset.label),
+                    subtitle: Text('${preset.width} x ${preset.height}'),
+                    trailing: const Icon(Icons.download),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _exportPage(preset, currentPage.id);
+                    },
+                  ),
+                ),
+                ListTile(
+                  title: const Text('Custom size'),
+                  subtitle: const Text('Set your own width and height'),
+                  trailing: const Icon(Icons.tune),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showCustomExportDialog(currentPage);
+                  },
+                ),
+                const SizedBox(height: AppTheme.spacing8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showCustomExportDialog(page_entity.Page page) async {
+    final widthController = TextEditingController(
+      text: page.canvasWidth.toString(),
+    );
+    final heightController = TextEditingController(
+      text: page.canvasHeight.toString(),
+    );
+    String format = 'jpeg';
+    int quality = 92;
+
+    final result = await showDialog<_ExportPreset>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Custom export'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: widthController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Width (px)',
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacing12),
+                    TextField(
+                      controller: heightController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Height (px)',
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacing12),
+                    DropdownButtonFormField<String>(
+                      initialValue: format,
+                      decoration: const InputDecoration(labelText: 'Format'),
+                      items: const [
+                        DropdownMenuItem(value: 'jpeg', child: Text('JPEG')),
+                        DropdownMenuItem(value: 'png', child: Text('PNG')),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() {
+                          format = value ?? 'jpeg';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: AppTheme.spacing12),
+                    DropdownButtonFormField<int>(
+                      initialValue: quality,
+                      decoration: const InputDecoration(labelText: 'Quality'),
+                      items: const [
+                        DropdownMenuItem(value: 85, child: Text('85')),
+                        DropdownMenuItem(value: 92, child: Text('92')),
+                        DropdownMenuItem(value: 98, child: Text('98')),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() {
+                          quality = value ?? 92;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final width =
+                        int.tryParse(widthController.text.trim()) ?? 0;
+                    final height =
+                        int.tryParse(heightController.text.trim()) ?? 0;
+                    if (width <= 0 || height <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Enter valid width and height'),
+                          backgroundColor: AppTheme.errorColor,
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pop(
+                      context,
+                      _ExportPreset(
+                        label: 'Custom',
+                        width: width,
+                        height: height,
+                        format: format,
+                        scale: 2.0,
+                        quality: quality,
+                      ),
+                    );
+                  },
+                  child: const Text('Export'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      _exportPage(result, page.id);
+    }
+  }
+
+  Future<void> _exportPage(_ExportPreset preset, String pageId) async {
+    if (_isExporting) return;
+    setState(() {
+      _isExporting = true;
+    });
+
+    final exportService = context.read<PageExportService>();
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final bytes = await exportService.exportPage(
+        pageId: pageId,
+        scale: preset.scale,
+        format: preset.format,
+        width: preset.width,
+        height: preset.height,
+        quality: preset.quality,
+      );
+
+      final tempDir = await getTemporaryDirectory();
+      final extension = preset.format == 'jpeg' ? 'jpg' : preset.format;
+      final file = File(
+        '${tempDir.path}/scrappd_page_${pageId}_${preset.width}x${preset.height}.$extension',
+      );
+      await file.writeAsBytes(bytes);
+
+      if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) {
+        throw Exception(
+          'Saving to gallery is only supported on Android and iOS.',
+        );
+      }
+
+      await Gal.putImage(file.path);
+
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Page saved to gallery'),
+            backgroundColor: AppTheme.successColor,
+            action: SnackBarAction(
+              label: 'Share',
+              textColor: Colors.white,
+              onPressed: () => _shareFile(file),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        final message = e is MissingPluginException
+            ? 'Save failed. Please fully restart the app after adding plugins.'
+            : 'Failed to export page: $e';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _shareFile(File file) async {
+    try {
+      await Share.shareXFiles([XFile(file.path)], text: 'Scrappd page');
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _createProject() async {
     final controller = TextEditingController();
     final created = await showDialog<String>(
@@ -138,9 +605,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
           title: const Text('New project'),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Project title',
-            ),
+            decoration: const InputDecoration(labelText: 'Project title'),
           ),
           actions: [
             TextButton(
@@ -160,8 +625,10 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
 
     if (created == null || created.isEmpty) return;
     final projectsProvider = context.read<ProjectsProvider>();
-    final project =
-        await projectsProvider.createProject(title: created, description: null);
+    final project = await projectsProvider.createProject(
+      title: created,
+      description: null,
+    );
     if (project == null) return;
 
     setState(() {
@@ -200,10 +667,8 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedProjectId,
-                  decoration: const InputDecoration(
-                    labelText: 'Project',
-                  ),
+                  initialValue: _selectedProjectId,
+                  decoration: const InputDecoration(labelText: 'Project'),
                   items: projectsProvider.projects
                       .map(
                         (project) => DropdownMenuItem(
@@ -217,9 +682,9 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     setState(() {
                       _selectedProjectId = value;
                     });
-                    await context
-                        .read<PageEditorProvider>()
-                        .loadPageForProject(value);
+                    await context.read<PageEditorProvider>().loadPageForProject(
+                      value,
+                    );
                   },
                 ),
               ),
@@ -232,9 +697,20 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
             ],
           ),
           const SizedBox(height: AppTheme.spacing16),
-          Text(
-            'Templates',
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Templates',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: currentPage == null ? null : _showExportSheet,
+                icon: const Icon(Icons.download),
+                label: const Text('Export'),
+              ),
+            ],
           ),
           const SizedBox(height: AppTheme.spacing12),
           SizedBox(
@@ -267,6 +743,13 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                   for (final item in itemsProvider.items)
                     item.id: (item.processedImageUrl ?? item.originalImageUrl),
                 };
+                final statusLookup = {
+                  for (final item in itemsProvider.items)
+                    item.id: item.processingStatus,
+                };
+                final itemLookup = {
+                  for (final item in itemsProvider.items) item.id: item,
+                };
 
                 return Stack(
                   children: [
@@ -276,10 +759,10 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                         color: currentPage != null
                             ? _colorFromHex(currentPage.backgroundColor)
                             : _activeTemplate.backgroundColor,
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusLarge),
-                        border:
-                            Border.all(color: const Color(0xFFE5E7EB)),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge,
+                        ),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
                       child: CustomPaint(
                         painter: _activeTemplate.painter,
@@ -292,56 +775,80 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                       final imageUrl = imageLookup[item.itemId];
                       final width = item.width;
                       final height = item.height;
+                      final status = statusLookup[item.itemId] ?? 'unknown';
+                      final itemData = itemLookup[item.itemId];
+                      final isProcessing = status != 'completed';
                       return Positioned(
                         left: item.positionX,
                         top: item.positionY,
                         child: GestureDetector(
-                          onScaleStart: (details) {
-                            final box = _canvasKey.currentContext
-                                ?.findRenderObject() as RenderBox?;
-                            if (box == null) return;
-                            _gestureStart =
-                                box.globalToLocal(details.focalPoint);
-                            _itemStart =
-                                Offset(item.positionX, item.positionY);
-                            _widthStart = item.width;
-                            _heightStart = item.height;
-                            _rotationStart = item.rotation;
-                          },
-                          onScaleUpdate: (details) {
-                            final box = _canvasKey.currentContext
-                                ?.findRenderObject() as RenderBox?;
-                            if (box == null) return;
-                            final focal =
-                                box.globalToLocal(details.focalPoint);
-                            final delta = focal - _gestureStart;
-                            final nextWidth =
-                                (_widthStart * details.scale).clamp(80.0, 420.0);
-                            final nextHeight =
-                                (_heightStart * details.scale).clamp(80.0, 420.0);
-                            final nextOffset = _clampOffset(
-                              _itemStart + delta,
-                              canvasSize,
-                              nextWidth,
-                              nextHeight,
-                            );
+                          onScaleStart: isProcessing
+                              ? null
+                              : (details) {
+                                  final box =
+                                      _canvasKey.currentContext
+                                              ?.findRenderObject()
+                                          as RenderBox?;
+                                  if (box == null) return;
+                                  _gestureStart = box.globalToLocal(
+                                    details.focalPoint,
+                                  );
+                                  _itemStart = Offset(
+                                    item.positionX,
+                                    item.positionY,
+                                  );
+                                  _widthStart = item.width;
+                                  _heightStart = item.height;
+                                  _rotationStart = item.rotation;
+                                },
+                          onScaleUpdate: isProcessing
+                              ? null
+                              : (details) {
+                                  final box =
+                                      _canvasKey.currentContext
+                                              ?.findRenderObject()
+                                          as RenderBox?;
+                                  if (box == null) return;
+                                  final focal = box.globalToLocal(
+                                    details.focalPoint,
+                                  );
+                                  final delta = focal - _gestureStart;
+                                  final nextWidth =
+                                      (_widthStart * details.scale).clamp(
+                                        80.0,
+                                        420.0,
+                                      );
+                                  final nextHeight =
+                                      (_heightStart * details.scale).clamp(
+                                        80.0,
+                                        420.0,
+                                      );
+                                  final nextOffset = _clampOffset(
+                                    _itemStart + delta,
+                                    canvasSize,
+                                    nextWidth,
+                                    nextHeight,
+                                  );
 
-                            pageEditor.setItemTransform(
-                              pageItemId: item.id,
-                              positionX: nextOffset.dx,
-                              positionY: nextOffset.dy,
-                              width: nextWidth,
-                              height: nextHeight,
-                              rotation: _rotationStart + details.rotation,
-                            );
-                          },
-                          onScaleEnd: (_) {
-                            pageEditor.persistItemTransform(
-                              pageItemId: item.id,
-                            );
-                          },
-                          onLongPress: () =>
-                              pageEditor.deletePageItem(item.id),
+                                  pageEditor.setItemTransform(
+                                    pageItemId: item.id,
+                                    positionX: nextOffset.dx,
+                                    positionY: nextOffset.dy,
+                                    width: nextWidth,
+                                    height: nextHeight,
+                                    rotation: _rotationStart + details.rotation,
+                                  );
+                                },
+                          onScaleEnd: isProcessing
+                              ? null
+                              : (_) {
+                                  pageEditor.persistItemTransform(
+                                    pageItemId: item.id,
+                                  );
+                                },
+                          onLongPress: isProcessing
+                              ? null
+                              : () => pageEditor.deletePageItem(item.id),
                           child: Transform(
                             alignment: Alignment.center,
                             transform: Matrix4.identity()
@@ -350,31 +857,218 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                               width: width,
                               height: height,
                               decoration: BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(AppTheme.radiusMedium),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x22000000),
-                                    blurRadius: 12,
-                                    offset: Offset(0, 8),
-                                  ),
-                                ],
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(
                                   AppTheme.radiusMedium,
                                 ),
-                                child: imageUrl == null
-                                    ? Container(
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    if (imageUrl == null)
+                                      Container(
                                         color: const Color(0xFFE5E7EB),
                                         child: const Center(
-                                          child: Icon(Icons.image_not_supported),
+                                          child: Icon(
+                                            Icons.image_not_supported,
+                                          ),
                                         ),
                                       )
-                                    : Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
+                                    else
+                                      ColorFiltered(
+                                        colorFilter: isProcessing
+                                            ? const ColorFilter.mode(
+                                                Colors.grey,
+                                                BlendMode.saturation,
+                                              )
+                                            : const ColorFilter.mode(
+                                                Colors.transparent,
+                                                BlendMode.multiply,
+                                              ),
+                                        child: Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
+                                    if (isProcessing)
+                                      Positioned.fill(
+                                        child: Container(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.25,
+                                          ),
+                                          child: Align(
+                                            alignment: Alignment.bottomCenter,
+                                            child: Container(
+                                              height: 26,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: status == 'failed'
+                                                    ? AppTheme.errorColor
+                                                          .withValues(
+                                                            alpha: 0.9,
+                                                          )
+                                                    : Colors.black.withValues(
+                                                        alpha: 0.75,
+                                                      ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      status == 'failed'
+                                                          ? 'Failed'
+                                                          : 'Processing...',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  if (status == 'failed' &&
+                                                      itemData != null)
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          itemsProvider
+                                                              .retryItem(
+                                                                itemData,
+                                                              ),
+                                                      style: TextButton.styleFrom(
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                            ),
+                                                        minimumSize: const Size(
+                                                          0,
+                                                          20,
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        'Retry',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  else
+                                                    TextButton(
+                                                      onPressed: () async {
+                                                        final ok = await _confirmAction(
+                                                          title:
+                                                              'Cancel processing?',
+                                                          message:
+                                                              'This stops background removal and keeps the original.',
+                                                          confirmLabel:
+                                                              'Cancel',
+                                                        );
+                                                        if (ok) {
+                                                          await itemsProvider
+                                                              .cancelItem(
+                                                                item.itemId,
+                                                              );
+                                                        }
+                                                      },
+                                                      style: TextButton.styleFrom(
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                            ),
+                                                        minimumSize: const Size(
+                                                          0,
+                                                          20,
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        'Cancel',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  const SizedBox(width: 4),
+                                                  TextButton(
+                                                    onPressed: () async {
+                                                      final ok =
+                                                          await _confirmAction(
+                                                            title:
+                                                                'Delete item?',
+                                                            message:
+                                                                'This will remove the item.',
+                                                            confirmLabel:
+                                                                'Delete',
+                                                          );
+                                                      if (ok) {
+                                                        await itemsProvider
+                                                            .deleteItem(
+                                                              item.itemId,
+                                                            );
+                                                      }
+                                                    },
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                          ),
+                                                      minimumSize: const Size(
+                                                        0,
+                                                        20,
+                                                      ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Delete',
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (status != 'failed') ...[
+                                                    const SizedBox(width: 4),
+                                                    SizedBox(
+                                                      width: 30,
+                                                      child:
+                                                          LinearProgressIndicator(
+                                                            color: Colors.white,
+                                                            backgroundColor:
+                                                                Colors.white
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.3,
+                                                                    ),
+                                                            minHeight: 3,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -400,10 +1094,9 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
           const SizedBox(height: AppTheme.spacing12),
           Text(
             'Tip: drag to move, pinch to scale/rotate, long-press to remove.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppTheme.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
           ),
         ],
       ),
@@ -472,11 +1165,60 @@ class _PageTemplate {
     );
   }
 
-  static List<_PageTemplate> get defaults => [
-        clean(),
-        grid(),
-        split(),
-      ];
+  static List<_PageTemplate> get defaults => [clean(), grid(), split()];
+}
+
+class _ExportPreset {
+  const _ExportPreset({
+    required this.label,
+    required this.width,
+    required this.height,
+    required this.format,
+    required this.scale,
+    required this.quality,
+  });
+
+  final String label;
+  final int width;
+  final int height;
+  final String format;
+  final double scale;
+  final int quality;
+
+  static const List<_ExportPreset> defaults = [
+    _ExportPreset(
+      label: 'Instagram Portrait',
+      width: 1080,
+      height: 1350,
+      format: 'jpeg',
+      scale: 2.0,
+      quality: 92,
+    ),
+    _ExportPreset(
+      label: 'Instagram Square',
+      width: 1080,
+      height: 1080,
+      format: 'jpeg',
+      scale: 2.0,
+      quality: 92,
+    ),
+    _ExportPreset(
+      label: 'Story / Reels',
+      width: 1080,
+      height: 1920,
+      format: 'jpeg',
+      scale: 2.0,
+      quality: 92,
+    ),
+    _ExportPreset(
+      label: 'Transparent PNG (Full)',
+      width: 1080,
+      height: 1920,
+      format: 'png',
+      scale: 2.0,
+      quality: 100,
+    ),
+  ];
 }
 
 class _GridPainter extends CustomPainter {

@@ -58,6 +58,26 @@ class ProcessingScreen extends StatelessWidget {
                         ),
                         textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: AppTheme.spacing12),
+                      Column(
+                        children: [
+                          Text(
+                            'Elapsed: ${_formatDuration(provider.elapsed)}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (provider.uploadBytes != null)
+                            Text(
+                              'Upload size: ${_formatBytes(provider.uploadBytes!)}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                        ],
+                      ),
                       if (provider.uploadState == UploadState.error)
                         Padding(
                           padding: const EdgeInsets.only(
@@ -98,5 +118,20 @@ class ProcessingScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    final seconds = duration.inSeconds;
+    if (seconds < 60) return '${seconds}s';
+    final minutes = seconds ~/ 60;
+    final remainder = seconds % 60;
+    return '${minutes}m ${remainder}s';
+  }
+
+  String _formatBytes(int bytes) {
+    final mb = bytes / (1024 * 1024);
+    if (mb >= 1) return '${mb.toStringAsFixed(1)}MB';
+    final kb = bytes / 1024;
+    return '${kb.toStringAsFixed(0)}KB';
   }
 }

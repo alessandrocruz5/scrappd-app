@@ -63,3 +63,26 @@ curl -X POST "http://localhost:8000/process" \
   -F "file=@test.jpg" \
   --output result.png
 ```
+
+## Deploy
+
+cd scrappd-ml-service
+docker build --platform linux/amd64 -t scrappd-ml:v7 .
+
+# 2. Tag and push to Artifact Registry
+docker tag scrappd-ml:v7 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v7
+docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v7
+
+# 3. Deploy ML Service
+gcloud run deploy scrappd-ml \
+  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v7 \
+  --region=asia-southeast1 \
+  --platform=managed \
+  --memory=16Gi \
+  --cpu=4 \
+  --timeout=300 \
+  --concurrency=1 \
+  --min-instances=0 \
+  --max-instances=3 \
+  --no-allow-unauthenticated \
+  --set-env-vars="ENVIRONMENT=production"

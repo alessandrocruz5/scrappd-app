@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"io"
 	"mime/multipart"
 	"net/http/httptest"
@@ -49,6 +48,26 @@ func (m *mockItemsRepo) SoftDelete(ctx context.Context, userID, itemID uuid.UUID
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.Item), args.Error(1)
+}
+
+func (m *mockItemsRepo) UpdateProcessingStarted(ctx context.Context, userID, itemID uuid.UUID, startedAt time.Time) error {
+	args := m.Called(ctx, userID, itemID, startedAt)
+	return args.Error(0)
+}
+
+func (m *mockItemsRepo) UpdateProcessingCompleted(ctx context.Context, userID, itemID uuid.UUID, processedKey, processedURL string, processedSize int64, modelVersion string, completedAt time.Time) error {
+	args := m.Called(ctx, userID, itemID, processedKey, processedURL, processedSize, modelVersion, completedAt)
+	return args.Get(0).(bool), args.Error(1)
+}
+
+func (m *mockItemsRepo) UpdateProcessingFailed(ctx context.Context, userID, itemID uuid.UUID, errorMsg string, completedAt time.Time) error {
+	args := m.Called(ctx, userID, itemID, errorMsg, completedAt)
+	return args.Error(0)
+}
+
+func (m *mockItemsRepo) UpdateProcessingCancelled(ctx context.Context, userID, itemID uuid.UUID, completedAt time.Time) (bool, error) {
+	args := m.Called(ctx, userID, itemID, completedAt)
+	return args.Get(0).(bool), args.Error(1)
 }
 
 type mockUsageService struct {
@@ -163,47 +182,47 @@ func (m *mockStorage) HealthCheck(ctx context.Context) error {
 	return args.Error(0)
 }
 
+type mockTaskQueue struct {
+	mock.Mock
+}
+
+func (m *mockTaskQueue) EnqueueProcessItem(ctx context.Context, payload ProcessItemTaskPayload) error {
+	args := m.Called(ctx, payload)
+	return args.Error(0)
+}
+
 func TestItemsService_CreateItem_Success(t *testing.T) {
 	repo := new(mockItemsRepo)
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	queue := new(mockTaskQueue)
+	service := NewItemsService(repo, usage, ml, storage, queue, false)
 
 	ctx := context.Background()
 	userID := uuid.New()
 	tier := models.TierFree
 
 	fileHeader := buildTestFileHeader(t, "image.png", []byte("image-bytes"), "image/png")
-	base64Image := base64.StdEncoding.EncodeToString([]byte("image-bytes"))
-	processed := base64.StdEncoding.EncodeToString([]byte("processed"))
-
 	usage.On("CheckAndIncrementUsage", ctx, userID, tier).Return(true, &models.UsageStats{}, nil)
-	ml.On("RemoveBackground", ctx, base64Image, "png").Return(&models.RemoveBackgroundResponse{
-		ProcessedImage: processed,
-		Metadata: models.BackgroundRemovalMeta{
-			Model: "birefnet-general",
-		},
-	}, nil)
 
 	storage.On("Upload", ctx, "image.png", "image/png").Return("uploads/original.png", nil).Once()
-	storage.On("Upload", ctx, mock.Anything, "image/png").Return("uploads/processed.png", nil).Once()
 	storage.On("GetURL", ctx, "uploads/original.png", mock.Anything).Return("signed-original", nil).Once()
-	storage.On("GetURL", ctx, "uploads/processed.png", mock.Anything).Return("signed-processed", nil).Once()
 
 	repo.On("Create", ctx, mock.AnythingOfType("*models.Item")).Return(nil)
+	queue.On("EnqueueProcessItem", ctx, mock.AnythingOfType("services.ProcessItemTaskPayload")).Return(nil)
 
 	item, err := service.CreateItem(ctx, userID, tier, fileHeader, "png", "", "", nil)
 	require.NoError(t, err)
 	require.NotNil(t, item)
 	assert.Equal(t, "uploads/original.png", item.OriginalImageKey)
 	assert.Equal(t, "signed-original", item.OriginalImageURL)
-	assert.Equal(t, "signed-processed", *item.ProcessedImageURL)
+	assert.Nil(t, item.ProcessedImageURL)
 
 	repo.AssertExpectations(t)
 	storage.AssertExpectations(t)
-	ml.AssertExpectations(t)
 	usage.AssertExpectations(t)
+	queue.AssertExpectations(t)
 }
 
 func TestItemsService_CreateItem_UsageExceeded(t *testing.T) {
@@ -211,7 +230,8 @@ func TestItemsService_CreateItem_UsageExceeded(t *testing.T) {
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	queue := new(mockTaskQueue)
+	service := NewItemsService(repo, usage, ml, storage, queue, false)
 
 	ctx := context.Background()
 	userID := uuid.New()
@@ -234,7 +254,8 @@ func TestItemsService_ListItems_SignsURLs(t *testing.T) {
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	queue := new(mockTaskQueue)
+	service := NewItemsService(repo, usage, ml, storage, queue, false)
 
 	ctx := context.Background()
 	userID := uuid.New()
@@ -267,7 +288,8 @@ func TestItemsService_DeleteItem_DeletesStorage(t *testing.T) {
 	usage := new(mockUsageService)
 	ml := new(mockMLClient)
 	storage := new(mockStorage)
-	service := NewItemsService(repo, usage, ml, storage)
+	queue := new(mockTaskQueue)
+	service := NewItemsService(repo, usage, ml, storage, queue, false)
 
 	ctx := context.Background()
 	userID := uuid.New()

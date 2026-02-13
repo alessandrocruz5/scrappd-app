@@ -42,4 +42,14 @@ class ItemRepositoryImpl implements ItemRepository {
       total: meta?.total ?? items.length,
     );
   }
+
+  @override
+  Future<void> deleteItem(String itemId) {
+    return _remoteDataSource.deleteItem(itemId);
+  }
+
+  @override
+  Future<void> cancelItem(String itemId) {
+    return _remoteDataSource.cancelItem(itemId);
+  }
 }

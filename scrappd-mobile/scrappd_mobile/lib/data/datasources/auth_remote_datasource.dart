@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 
 import '../../core/constants/api_constants.dart';
 import '../../core/models/api_response.dart';
+import '../../core/network/error_helpers.dart';
+import '../../core/network/friendly_exception.dart';
 import '../models/user_model.dart';
 
 class LoginPayload {
@@ -25,15 +27,19 @@ class AuthRemoteDataSource {
     required String email,
     required String password,
   }) async {
-    final response = await _dio.post(
-      ApiConstants.authLogin,
-      data: {
-        'email': email,
-        'password': password,
+    return runWithFriendlyErrors(
+      () async {
+        final response = await _dio.post(
+          ApiConstants.authLogin,
+          data: {
+            'email': email,
+            'password': password,
+          },
+        );
+        return _parseLoginPayload(response.data as Map<String, dynamic>);
       },
+      defaultMessage: 'Login failed. Please try again.',
     );
-
-    return _parseLoginPayload(response.data as Map<String, dynamic>);
   }
 
   Future<LoginPayload> register({
@@ -42,57 +48,149 @@ class AuthRemoteDataSource {
     required String password,
     String? displayName,
   }) async {
-    final response = await _dio.post(
-      ApiConstants.authRegister,
-      data: {
-        'email': email,
-        'username': username,
-        'password': password,
-        if (displayName != null && displayName.isNotEmpty)
-          'display_name': displayName,
+    return runWithFriendlyErrors(
+      () async {
+        final response = await _dio.post(
+          ApiConstants.authRegister,
+          data: {
+            'email': email,
+            'username': username,
+            'password': password,
+            if (displayName != null && displayName.isNotEmpty)
+              'display_name': displayName,
+          },
+        );
+        final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
+          response.data as Map<String, dynamic>,
+          (data) => data as Map<String, dynamic>,
+        );
+
+        if (!apiResponse.success || apiResponse.data == null) {
+          throw FriendlyException(
+            apiResponse.error?.message ?? 'Registration failed.',
+          );
+        }
+
+        // Backend register returns user only; follow up with login to get tokens.
+        return login(email: email, password: password);
       },
+      defaultMessage: 'Registration failed. Please try again.',
     );
-    final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
-      response.data as Map<String, dynamic>,
-      (data) => data as Map<String, dynamic>,
-    );
-
-    if (!apiResponse.success || apiResponse.data == null) {
-      throw Exception(apiResponse.error?.message ?? 'Registration failed');
-    }
-
-    // Backend register returns user only; follow up with login to get tokens.
-    return login(email: email, password: password);
   }
 
   Future<UserModel> getMe() async {
-    final response = await _dio.get(ApiConstants.authMe);
-    final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
-      response.data as Map<String, dynamic>,
-      (data) => data as Map<String, dynamic>,
+    return runWithFriendlyErrors(
+      () async {
+        final response = await _dio.get(ApiConstants.authMe);
+        final apiResponse = ApiResponse<Map<String, dynamic>>.fromJson(
+          response.data as Map<String, dynamic>,
+          (data) => data as Map<String, dynamic>,
+        );
+
+        if (apiResponse.success && apiResponse.data != null) {
+          return UserModel.fromJson(apiResponse.data!);
+        }
+
+        throw FriendlyException(
+          apiResponse.error?.message ?? 'Failed to load user.',
+        );
+      },
+      defaultMessage: 'Failed to load user.',
     );
-
-    if (apiResponse.success && apiResponse.data != null) {
-      return UserModel.fromJson(apiResponse.data!);
-    }
-
-    throw Exception(apiResponse.error?.message ?? 'Failed to load user');
   }
 
   Future<void> logout({required String refreshToken}) async {
-    final response = await _dio.post(
-      ApiConstants.authLogout,
-      data: {'refresh_token': refreshToken},
-    );
+    return runWithFriendlyErrors(
+      () async {
+        final response = await _dio.post(
+          ApiConstants.authLogout,
+          data: {'refresh_token': refreshToken},
+        );
 
-    final apiResponse = ApiResponse.fromJson(
-      response.data as Map<String, dynamic>,
-      (_) => null,
-    );
+        final apiResponse = ApiResponse.fromJson(
+          response.data as Map<String, dynamic>,
+          (_) => null,
+        );
 
-    if (!apiResponse.success) {
-      throw Exception(apiResponse.error?.message ?? 'Logout failed');
-    }
+        if (!apiResponse.success) {
+          throw FriendlyException(
+            apiResponse.error?.message ?? 'Logout failed.',
+          );
+        }
+      },
+      defaultMessage: 'Logout failed. Please try again.',
+    );
+  }
+
+  Future<void> requestPasswordReset({required String email}) async {
+    return runWithFriendlyErrors(
+      () async {
+        final response = await _dio.post(
+          ApiConstants.authForgotPassword,
+          data: {'email': email},
+        );
+        final apiResponse = ApiResponse.fromJson(
+          response.data as Map<String, dynamic>,
+          (_) => null,
+        );
+        if (!apiResponse.success) {
+          throw FriendlyException(
+            apiResponse.error?.message ??
+                'Failed to request password reset.',
+          );
+        }
+      },
+      defaultMessage: 'Failed to request password reset.',
+    );
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    return runWithFriendlyErrors(
+      () async {
+        final response = await _dio.post(
+          ApiConstants.authResetPassword,
+          data: {
+            'token': token,
+            'password': password,
+          },
+        );
+        final apiResponse = ApiResponse.fromJson(
+          response.data as Map<String, dynamic>,
+          (_) => null,
+        );
+        if (!apiResponse.success) {
+          throw FriendlyException(
+            apiResponse.error?.message ?? 'Failed to reset password.',
+          );
+        }
+      },
+      defaultMessage: 'Failed to reset password.',
+    );
+  }
+
+  Future<void> resendVerification({required String email}) async {
+    return runWithFriendlyErrors(
+      () async {
+        final response = await _dio.post(
+          ApiConstants.authResendVerification,
+          data: {'email': email},
+        );
+        final apiResponse = ApiResponse.fromJson(
+          response.data as Map<String, dynamic>,
+          (_) => null,
+        );
+        if (!apiResponse.success) {
+          throw FriendlyException(
+            apiResponse.error?.message ??
+                'Failed to resend verification email.',
+          );
+        }
+      },
+      defaultMessage: 'Failed to resend verification email.',
+    );
   }
 
   LoginPayload _parseLoginPayload(Map<String, dynamic> json) {
@@ -102,7 +200,9 @@ class AuthRemoteDataSource {
     );
 
     if (!apiResponse.success || apiResponse.data == null) {
-      throw Exception(apiResponse.error?.message ?? 'Authentication failed');
+      throw FriendlyException(
+        apiResponse.error?.message ?? 'Authentication failed.',
+      );
     }
 
     final data = apiResponse.data!;
@@ -112,4 +212,5 @@ class AuthRemoteDataSource {
       refreshToken: data['refresh_token'] as String,
     );
   }
+
 }

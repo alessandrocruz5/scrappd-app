@@ -49,6 +49,14 @@ func (s *noopItemsService) GetUsageStats(ctx context.Context, userID uuid.UUID) 
 	return nil, nil, utils.ErrInternalServer("Items service not configured", nil)
 }
 
+func (s *noopItemsService) ProcessItem(ctx context.Context, userID, itemID uuid.UUID, format string) error {
+	return utils.ErrInternalServer("Items service not configured", nil)
+}
+
+func (s *noopItemsService) CancelProcessing(ctx context.Context, userID, itemID uuid.UUID) error {
+	return utils.ErrInternalServer("Items service not configured", nil)
+}
+
 func TestAuthFlow_Integration(t *testing.T) {
 	// Setup
 	db := setupTestDB(t)
@@ -58,8 +66,8 @@ func TestAuthFlow_Integration(t *testing.T) {
 	logger.SetOutput(io.Discard)
 
 	userRepo := repository.NewUserRepository(db)
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
-	authService := services.NewAuthService(userRepo, tokenManager)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	authService := services.NewAuthService(userRepo, tokenManager, services.NoopEmailSender{}, "http://localhost:3000")
 	mlClient := services.NewMLClient(&config.MLServiceConfig{
 		BaseURL:    "http://localhost:8000",
 		Timeout:    120 * time.Second,
@@ -78,7 +86,9 @@ func TestAuthFlow_Integration(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		nil,
 		tokenManager,
+		"test-internal-secret",
 		logger,
 	)
 
