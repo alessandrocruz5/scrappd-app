@@ -47,7 +47,7 @@ func (h *ItemsHandler) CreateItem(c *gin.Context) {
 		return
 	}
 
-	utils.RespondCreated(c, item)
+	utils.RespondSuccess(c, http.StatusAccepted, item)
 }
 
 // ListItems returns a paginated list of items for the current user.
@@ -115,6 +115,28 @@ func (h *ItemsHandler) DeleteItem(c *gin.Context) {
 	}
 
 	if err := h.itemsService.DeleteItem(c.Request.Context(), userID, itemID); err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	utils.RespondNoContent(c)
+}
+
+// CancelItemProcessing cancels background processing for an item.
+func (h *ItemsHandler) CancelItemProcessing(c *gin.Context) {
+	userID, _, err := getUserContext(c)
+	if err != nil {
+		utils.RespondError(c, err)
+		return
+	}
+
+	itemID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.RespondError(c, utils.ErrBadRequest("Invalid item ID", err))
+		return
+	}
+
+	if err := h.itemsService.CancelProcessing(c.Request.Context(), userID, itemID); err != nil {
 		utils.RespondError(c, err)
 		return
 	}

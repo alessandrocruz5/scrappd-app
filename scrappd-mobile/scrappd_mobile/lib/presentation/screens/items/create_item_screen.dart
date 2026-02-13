@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/theme_constants.dart';
 import '../../providers/items_provider.dart';
-import 'processing_screen.dart';
+import '../shell/main_shell.dart';
 
 class CreateItemScreen extends StatefulWidget {
   const CreateItemScreen({super.key});
@@ -58,9 +58,9 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
 
   Future<void> _submit() async {
     if (_selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an image.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select an image.')));
       return;
     }
 
@@ -68,10 +68,6 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
 
     final provider = context.read<ItemsProvider>();
     provider.resetUpload();
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ProcessingScreen()),
-    );
 
     await provider.createItem(
       imageFile: _selectedImage!,
@@ -84,6 +80,25 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
       tags: _parseTags(),
       format: _format,
     );
+
+    if (!mounted) return;
+
+    if (provider.uploadState == UploadState.success) {
+      final shell = MainShell.of(context);
+      if (shell != null) {
+        shell.setIndex(2);
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 2)),
+        );
+      }
+    } else if (provider.uploadState == UploadState.error &&
+        provider.errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(provider.errorMessage!)));
+    }
   }
 
   @override
@@ -105,8 +120,7 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
                     child: Text(
                       'Select an image to start',
                       style: TextStyle(
-                        color: AppTheme.textSecondary
-                            .withValues(alpha: 0.8),
+                        color: AppTheme.textSecondary.withValues(alpha: 0.8),
                       ),
                     ),
                   )
@@ -182,12 +196,23 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
             ),
           ),
           const SizedBox(height: AppTheme.spacing24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _submit,
-              child: const Text('Upload & Process'),
-            ),
+          Consumer<ItemsProvider>(
+            builder: (context, provider, _) {
+              final isUploading = provider.uploadState == UploadState.uploading;
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isUploading ? null : _submit,
+                  child: isUploading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Upload & Process'),
+                ),
+              );
+            },
           ),
         ],
       ),

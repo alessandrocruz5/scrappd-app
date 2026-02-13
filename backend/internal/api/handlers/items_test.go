@@ -58,6 +58,16 @@ func (m *mockItemsService) GetUsageStats(ctx context.Context, userID uuid.UUID) 
 	return args.Get(0).(*models.UsageStats), args.Get(1).(map[string]string), args.Error(2)
 }
 
+func (m *mockItemsService) ProcessItem(ctx context.Context, userID, itemID uuid.UUID, format string) error {
+	args := m.Called(ctx, userID, itemID, format)
+	return args.Error(0)
+}
+
+func (m *mockItemsService) CancelProcessing(ctx context.Context, userID, itemID uuid.UUID) error {
+	args := m.Called(ctx, userID, itemID)
+	return args.Error(0)
+}
+
 func TestItemsHandler_CreateItem_MissingFile(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()

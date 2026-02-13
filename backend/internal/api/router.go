@@ -23,6 +23,7 @@ func SetupRouter(
 	redisHealth handlers.RedisHealthChecker,
 	storageHealth handlers.StorageHealthChecker,
 	tokenManager *auth.TokenManager,
+	internalSecret string,
 	logger *logrus.Logger,
 ) *gin.Engine {
 	router := gin.New()
@@ -39,6 +40,7 @@ func SetupRouter(
 	mlHandler := handlers.NewMLHandler(mlClient)
 	authHandler := handlers.NewAuthHandler(authService)
 	itemsHandler := handlers.NewItemsHandler(itemsService)
+	internalItemsHandler := handlers.NewInternalItemsHandler(itemsService)
 	projectsHandler := handlers.NewProjectsHandler(projectsService)
 	pagesHandler := handlers.NewPagesHandler(pagesService, pageRenderService)
 	pageItemsHandler := handlers.NewPageItemsHandler(pageItemsService)
@@ -89,6 +91,7 @@ func SetupRouter(
 			itemsRoutes.GET("", itemsHandler.ListItems)
 			itemsRoutes.GET("/usage", itemsHandler.GetUsage)
 			itemsRoutes.GET("/:id", itemsHandler.GetItem)
+			itemsRoutes.POST("/:id/cancel", itemsHandler.CancelItemProcessing)
 			itemsRoutes.DELETE("/:id", itemsHandler.DeleteItem)
 		}
 
@@ -143,6 +146,13 @@ func SetupRouter(
 			"routes": routeList,
 		})
 	})
+
+	// Internal task routes
+	internalRoutes := router.Group("/internal")
+	internalRoutes.Use(middleware.InternalAuthMiddleware(internalSecret))
+	{
+		internalRoutes.POST("/items/process", internalItemsHandler.ProcessItem)
+	}
 
 	return router
 }

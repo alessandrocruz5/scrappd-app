@@ -13,7 +13,7 @@ import (
 )
 
 func TestAuthMiddleware_Success(t *testing.T) {
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	router := gin.New()
 	router.Use(AuthMiddleware(tokenManager))
@@ -34,7 +34,7 @@ func TestAuthMiddleware_Success(t *testing.T) {
 }
 
 func TestAuthMiddleware_NoToken(t *testing.T) {
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	router := gin.New()
 	router.Use(AuthMiddleware(tokenManager))
@@ -50,7 +50,7 @@ func TestAuthMiddleware_NoToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_InvalidToken(t *testing.T) {
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	router := gin.New()
 	router.Use(AuthMiddleware(tokenManager))
@@ -67,7 +67,7 @@ func TestAuthMiddleware_InvalidToken(t *testing.T) {
 }
 
 func TestAuthMiddleware_ExpiredToken(t *testing.T) {
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", -1*time.Hour, 7*24*time.Hour)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", -1*time.Hour, 7*24*time.Hour, 24*time.Hour)
 
 	router := gin.New()
 	router.Use(AuthMiddleware(tokenManager))
@@ -87,7 +87,7 @@ func TestAuthMiddleware_ExpiredToken(t *testing.T) {
 }
 
 func TestOptionalAuthMiddleware_WithToken(t *testing.T) {
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	router := gin.New()
 	router.Use(OptionalAuthMiddleware(tokenManager))
@@ -108,7 +108,7 @@ func TestOptionalAuthMiddleware_WithToken(t *testing.T) {
 }
 
 func TestOptionalAuthMiddleware_WithoutToken(t *testing.T) {
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	router := gin.New()
 	router.Use(OptionalAuthMiddleware(tokenManager))

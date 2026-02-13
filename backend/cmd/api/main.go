@@ -77,6 +77,17 @@ func main() {
 		logger.Fatalf("Failed to initialize storage: %v", err)
 	}
 
+	var taskQueue services.TaskQueue
+	if cfg.CloudTasks.Enabled {
+		if cfg.App.InternalTaskSecret == "" {
+			logger.Fatal("INTERNAL_TASK_SECRET must be set when Cloud Tasks is enabled")
+		}
+		taskQueue, err = services.NewCloudTasksQueue(&cfg.CloudTasks, cfg.App.InternalTaskSecret, logger)
+		if err != nil {
+			logger.Fatalf("Failed to initialize Cloud Tasks queue: %v", err)
+		}
+	}
+
 	redisClient, err := services.NewRedisClient(&cfg.Redis)
 	if err != nil {
 		logger.Fatalf("Failed to initialize Redis client: %v", err)
@@ -88,6 +99,7 @@ func main() {
 		usageService,
 		mlClient,
 		storage,
+		taskQueue,
 		cfg.App.BypassUsageLimits,
 	)
 	pagesService := services.NewPagesService(pagesRepo)
@@ -111,6 +123,7 @@ func main() {
 		redisClient,
 		storage,
 		tokenManager,
+		cfg.App.InternalTaskSecret,
 		logger,
 	)
 

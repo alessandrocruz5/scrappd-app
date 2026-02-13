@@ -23,8 +23,8 @@ gcloud run deploy scrappd-ml \
   --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v5 \
   --region=asia-southeast1 \
   --platform=managed \
-  --memory=4Gi \
-  --cpu=2 \
+  --memory=16Gi \
+  --cpu=4 \
   --timeout=300 \
   --concurrency=1 \
   --min-instances=0 \

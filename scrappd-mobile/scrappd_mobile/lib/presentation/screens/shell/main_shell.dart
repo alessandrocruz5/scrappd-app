@@ -7,14 +7,33 @@ import '../items/items_gallery_screen.dart';
 import '../pages/page_editor_screen.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  const MainShell({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
+
+  static _MainShellState? of(BuildContext context) {
+    return context.findAncestorStateOfType<_MainShellState>();
+  }
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _index = 0;
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex;
+  }
+
+  void setIndex(int value) {
+    if (_index == value) return;
+    setState(() {
+      _index = value;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +46,11 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _index == 0 ? 'Create' : _index == 1 ? 'Gallery' : 'Pages',
+          _index == 0
+              ? 'Create'
+              : _index == 1
+              ? 'Gallery'
+              : 'Pages',
         ),
         actions: [
           IconButton(
@@ -41,9 +64,7 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (value) {
-          setState(() {
-            _index = value;
-          });
+          setIndex(value);
         },
         destinations: const [
           NavigationDestination(
