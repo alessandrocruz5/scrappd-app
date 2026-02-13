@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:scrappd_mobile/core/config/environment.dart';
+import 'package:scrappd_mobile/core/network/dio_error_mapper.dart';
 import '../../core/constants/api_constants.dart';
 import '../models/processed_image.dart';
 
@@ -46,6 +47,18 @@ class ApiService {
       },
       onError: (error, handler) {
         debugPrint('❌ ${error.type}: ${error.message}');
+        final status = error.response?.statusCode;
+        if (status != null) {
+          debugPrint('❌ HTTP $status ${error.requestOptions.method} ${error.requestOptions.uri}');
+        }
+        if (status == 429) {
+          final headers = error.response?.headers.map;
+          debugPrint('🛑 429 headers: ${headers ?? {}}');
+          final data = error.response?.data;
+          if (data != null) {
+            debugPrint('🛑 429 body: $data');
+          }
+        }
         handler.next(error);
       },
     );
@@ -227,44 +240,15 @@ class ApiService {
   }
 
     ApiException _handleDioError(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-        return ApiException(
-          'Connection timed out. The server might be starting up - please try again.',
-          null,
-          isRetryable: true,
-        );
-      case DioExceptionType.receiveTimeout:
-        return ApiException(
-          'Request timed out. Image processing is taking longer than expected.',
-          null,
-          isRetryable: true,
-        );
-      case DioExceptionType.connectionError:
-        return ApiException(
-          'Unable to connect to server. Please check your internet connection.',
-          null,
-          isRetryable: true,
-        );
-      case DioExceptionType.badResponse:
-        final statusCode = error.response?.statusCode;
-        final message = _parseErrorMessage(error.response?.data);
-        return ApiException(message ?? 'Server error', statusCode);
-      default:
-        return ApiException(
-          error.message ?? 'An unexpected error occurred',
-          null,
-        );
-    }
-  }
-
-  String? _parseErrorMessage(dynamic data) {
-    if (data == null) return null;
-    if (data is Map) {
-      return data['error']?['message'] ?? data['message'] ?? data['detail'];
-    }
-    if (data is String) return data;
-    return null;
+    final result = DioErrorMapper.map(
+      error,
+      defaultMessage: 'An unexpected error occurred.',
+    );
+    return ApiException(
+      result.message,
+      result.statusCode,
+      isRetryable: result.isRetryable,
+    );
   }
   
   void dispose() {

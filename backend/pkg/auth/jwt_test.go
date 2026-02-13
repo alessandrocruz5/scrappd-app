@@ -10,7 +10,7 @@ import (
 )
 
 func TestTokenManager_GenerateAccessToken(t *testing.T) {
-	tm := NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tm := NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	userID := uuid.New()
 	token, err := tm.GenerateAccessToken(userID, "test@example.com", "testuser", "free")
@@ -20,7 +20,7 @@ func TestTokenManager_GenerateAccessToken(t *testing.T) {
 }
 
 func TestTokenManager_ValidateAccessToken_Success(t *testing.T) {
-	tm := NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tm := NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	userID := uuid.New()
 	token, err := tm.GenerateAccessToken(userID, "test@example.com", "testuser", "free")
@@ -35,7 +35,7 @@ func TestTokenManager_ValidateAccessToken_Success(t *testing.T) {
 }
 
 func TestTokenManager_ValidateAccessToken_Expired(t *testing.T) {
-	tm := NewTokenManager("test-secret", "refresh-secret", -1*time.Hour, 7*24*time.Hour)
+	tm := NewTokenManager("test-secret", "refresh-secret", "verify-secret", -1*time.Hour, 7*24*time.Hour, 24*time.Hour)
 
 	userID := uuid.New()
 	token, err := tm.GenerateAccessToken(userID, "test@example.com", "testuser", "free")
@@ -46,8 +46,8 @@ func TestTokenManager_ValidateAccessToken_Expired(t *testing.T) {
 }
 
 func TestTokenManager_ValidateAccessToken_InvalidSecret(t *testing.T) {
-	tm1 := NewTokenManager("secret-1", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
-	tm2 := NewTokenManager("secret-2", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tm1 := NewTokenManager("secret-1", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
+	tm2 := NewTokenManager("secret-2", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	userID := uuid.New()
 	token, err := tm1.GenerateAccessToken(userID, "test@example.com", "testuser", "free")
@@ -58,7 +58,7 @@ func TestTokenManager_ValidateAccessToken_InvalidSecret(t *testing.T) {
 }
 
 func TestTokenManager_GenerateRefreshToken(t *testing.T) {
-	tm := NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tm := NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	userID := uuid.New()
 	token, err := tm.GenerateRefreshToken(userID)
@@ -68,7 +68,7 @@ func TestTokenManager_GenerateRefreshToken(t *testing.T) {
 }
 
 func TestTokenManager_ValidateRefreshToken_Success(t *testing.T) {
-	tm := NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tm := NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 
 	userID := uuid.New()
 	token, err := tm.GenerateRefreshToken(userID)

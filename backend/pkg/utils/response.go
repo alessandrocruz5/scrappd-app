@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -57,6 +58,30 @@ func RespondError(c *gin.Context, err error) {
 			Code:    appErr.Code,
 			Message: appErr.Message,
 		}
+
+		requestID, _ := c.Get("request_id")
+		if appErr.Internal != nil {
+			log.Printf(
+				"error request_id=%v method=%s path=%s status=%d code=%s message=%s internal=%v",
+				requestID,
+				c.Request.Method,
+				c.Request.URL.String(),
+				statusCode,
+				appErr.Code,
+				appErr.Message,
+				appErr.Internal,
+			)
+		} else {
+			log.Printf(
+				"error request_id=%v method=%s path=%s status=%d code=%s message=%s",
+				requestID,
+				c.Request.Method,
+				c.Request.URL.String(),
+				statusCode,
+				appErr.Code,
+				appErr.Message,
+			)
+		}
 	} else {
 		// Default to internal server error for unknown errors
 		statusCode = http.StatusInternalServerError
@@ -64,6 +89,17 @@ func RespondError(c *gin.Context, err error) {
 			Code:    ErrCodeInternalServer,
 			Message: "An unexpected error occurred",
 		}
+
+		requestID, _ := c.Get("request_id")
+		log.Printf(
+			"error request_id=%v method=%s path=%s status=%d code=%s err=%v",
+			requestID,
+			c.Request.Method,
+			c.Request.URL.String(),
+			statusCode,
+			ErrCodeInternalServer,
+			err,
+		)
 	}
 
 	c.JSON(statusCode, Response{

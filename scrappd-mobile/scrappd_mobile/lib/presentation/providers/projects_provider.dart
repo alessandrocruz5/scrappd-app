@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/project.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../core/network/error_helpers.dart';
 
 class ProjectsProvider extends ChangeNotifier {
   ProjectsProvider(this._repository);
@@ -24,7 +25,10 @@ class ProjectsProvider extends ChangeNotifier {
       _projects = result.projects;
       _errorMessage = null;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to load projects.',
+      );
     } finally {
       _setLoading(false);
     }
@@ -44,7 +48,10 @@ class ProjectsProvider extends ChangeNotifier {
       _errorMessage = null;
       return project;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to create project.',
+      );
       return null;
     } finally {
       _setLoading(false);

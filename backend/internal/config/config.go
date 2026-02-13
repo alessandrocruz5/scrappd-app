@@ -10,14 +10,15 @@ import (
 )
 
 type Config struct {
-	Server    ServerConfig
-	Database  DatabaseConfig
-	Redis     RedisConfig
-	MLService MLServiceConfig
-	Storage   StorageConfig
-	JWT       JWTConfig
-	Email     EmailConfig
-	App       AppConfig
+	Server     ServerConfig
+	Database   DatabaseConfig
+	Redis      RedisConfig
+	MLService  MLServiceConfig
+	Storage    StorageConfig
+	CloudTasks CloudTasksConfig
+	JWT        JWTConfig
+	Email      EmailConfig
+	App        AppConfig
 }
 
 type ServerConfig struct {
@@ -62,6 +63,15 @@ type StorageConfig struct {
 	Region          string
 }
 
+type CloudTasksConfig struct {
+	Enabled             bool
+	ProjectID           string
+	Location            string
+	QueueID             string
+	ServiceURL          string
+	ServiceAccountEmail string
+}
+
 type JWTConfig struct {
 	AccessTokenSecret  string
 	RefreshTokenSecret string
@@ -85,7 +95,9 @@ type EmailConfig struct {
 }
 
 type AppConfig struct {
-	BaseURL string
+	BaseURL            string
+	BypassUsageLimits  bool
+	InternalTaskSecret string
 }
 
 // Load loads configuration from environment variables
@@ -130,6 +142,14 @@ func Load() (*Config, error) {
 			BucketName:      getEnv("STORAGE_BUCKET_NAME", "scrappd-images"),
 			Region:          getEnv("STORAGE_REGION", "auto"),
 		},
+		CloudTasks: CloudTasksConfig{
+			Enabled:             getBoolEnv("CLOUD_TASKS_ENABLED", false),
+			ProjectID:           getEnv("CLOUD_TASKS_PROJECT_ID", ""),
+			Location:            getEnv("CLOUD_TASKS_LOCATION", ""),
+			QueueID:             getEnv("CLOUD_TASKS_QUEUE_ID", ""),
+			ServiceURL:          getEnv("CLOUD_TASKS_SERVICE_URL", ""),
+			ServiceAccountEmail: getEnv("CLOUD_TASKS_SERVICE_ACCOUNT_EMAIL", ""),
+		},
 		JWT: JWTConfig{
 			AccessTokenSecret:  getEnv("JWT_ACCESS_SECRET", "your-secret-key-change-in-production"),
 			RefreshTokenSecret: getEnv("JWT_REFRESH_SECRET", "your-refresh-secret-change-in-production"),
@@ -151,7 +171,9 @@ func Load() (*Config, error) {
 			SkipTLSVerify:   getBoolEnv("SMTP_SKIP_TLS_VERIFY", false),
 		},
 		App: AppConfig{
-			BaseURL: getEnv("APP_BASE_URL", "http://localhost:3000"),
+			BaseURL:            getEnv("APP_BASE_URL", "http://localhost:3000"),
+			BypassUsageLimits:  getBoolEnv("BYPASS_USAGE_LIMITS", false),
+			InternalTaskSecret: getEnv("INTERNAL_TASK_SECRET", ""),
 		},
 	}
 

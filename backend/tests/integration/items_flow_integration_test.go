@@ -112,6 +112,12 @@ func (s *stubRedis) Close() error {
 	return nil
 }
 
+type stubTaskQueue struct{}
+
+func (s *stubTaskQueue) EnqueueProcessItem(ctx context.Context, payload services.ProcessItemTaskPayload) error {
+	return nil
+}
+
 func TestItemsFlow_Integration(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
@@ -131,15 +137,15 @@ func TestItemsFlow_Integration(t *testing.T) {
 	require.NoError(t, err)
 	defer cleanupTestUser(t, db, user.Email)
 
-	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", 15*time.Minute, 7*24*time.Hour)
+	tokenManager := auth.NewTokenManager("test-secret", "refresh-secret", "verify-secret", 15*time.Minute, 7*24*time.Hour, 24*time.Hour)
 	accessToken, err := tokenManager.GenerateAccessToken(user.ID, user.Email, user.Username, string(user.SubscriptionTier))
 	require.NoError(t, err)
 
 	usageService := services.NewUsageService(usageRepo)
 	mlClient := &stubMLClient{}
 	storage := newInMemoryStorage()
-	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage)
-	authService := services.NewAuthService(userRepo, tokenManager)
+	itemsService := services.NewItemsService(itemsRepo, usageService, mlClient, storage, &stubTaskQueue{}, false)
+	authService := services.NewAuthService(userRepo, tokenManager, services.NoopEmailSender{}, "http://localhost:3000")
 	pagesService := services.NewPagesService(pagesRepo)
 	projectsService := services.NewProjectsService(projectsRepo)
 	pageItemsService := services.NewPageItemsService(pageItemsRepo)
@@ -158,6 +164,7 @@ func TestItemsFlow_Integration(t *testing.T) {
 		&stubRedis{},
 		storage,
 		tokenManager,
+		"test-internal-secret",
 		logger,
 	)
 
@@ -177,7 +184,7 @@ func TestItemsFlow_Integration(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusCreated, w.Code)
+		assert.Equal(t, http.StatusAccepted, w.Code)
 		var response utils.Response
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)

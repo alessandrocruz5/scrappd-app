@@ -38,6 +38,31 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
   double _rotationStart = 0.0;
   bool _isExporting = false;
 
+  Future<bool> _confirmAction({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -89,17 +114,193 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     final item = itemsProvider.items[index];
                     final imageUrl =
                         item.processedImageUrl ?? item.originalImageUrl;
+                    final isProcessing = item.processingStatus != 'completed';
                     return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        _addItem(item.id, canvasSize);
-                      },
+                      onTap: isProcessing
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              _addItem(item.id, canvasSize);
+                            },
                       child: ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusMedium),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusMedium,
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ColorFiltered(
+                              colorFilter: isProcessing
+                                  ? const ColorFilter.mode(
+                                      Colors.grey,
+                                      BlendMode.saturation,
+                                    )
+                                  : const ColorFilter.mode(
+                                      Colors.transparent,
+                                      BlendMode.multiply,
+                                    ),
+                              child: Image.network(imageUrl, fit: BoxFit.cover),
+                            ),
+                            if (isProcessing)
+                              Positioned.fill(
+                                child: Container(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Container(
+                                      height: 26,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: item.processingStatus == 'failed'
+                                            ? AppTheme.errorColor.withValues(
+                                                alpha: 0.9,
+                                              )
+                                            : Colors.black.withValues(
+                                                alpha: 0.75,
+                                              ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              item.processingStatus == 'failed'
+                                                  ? 'Failed'
+                                                  : 'Processing...',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Row(
+                                            children: [
+                                              if (item.processingStatus ==
+                                                  'failed')
+                                                TextButton(
+                                                  onPressed: () => itemsProvider
+                                                      .retryItem(item),
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                        ),
+                                                    minimumSize: const Size(
+                                                      0,
+                                                      22,
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    'Retry',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                )
+                                              else
+                                                TextButton(
+                                                  onPressed: () async {
+                                                    final ok = await _confirmAction(
+                                                      title:
+                                                          'Cancel processing?',
+                                                      message:
+                                                          'This stops background removal and keeps the original.',
+                                                      confirmLabel: 'Cancel',
+                                                    );
+                                                    if (ok) {
+                                                      await itemsProvider
+                                                          .cancelItem(item.id);
+                                                    }
+                                                  },
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                        ),
+                                                    minimumSize: const Size(
+                                                      0,
+                                                      22,
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    'Cancel',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              const SizedBox(width: 4),
+                                              TextButton(
+                                                onPressed: () async {
+                                                  final ok = await _confirmAction(
+                                                    title: 'Delete item?',
+                                                    message:
+                                                        'This will remove the item.',
+                                                    confirmLabel: 'Delete',
+                                                  );
+                                                  if (ok) {
+                                                    await itemsProvider
+                                                        .deleteItem(item.id);
+                                                  }
+                                                },
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                      ),
+                                                  minimumSize: const Size(
+                                                    0,
+                                                    22,
+                                                  ),
+                                                ),
+                                                child: const Text(
+                                                  'Delete',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (item.processingStatus !=
+                                                  'failed') ...[
+                                                const SizedBox(width: 4),
+                                                SizedBox(
+                                                  width: 40,
+                                                  child:
+                                                      LinearProgressIndicator(
+                                                        color: Colors.white,
+                                                        backgroundColor: Colors
+                                                            .white
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                        minHeight: 3,
+                                                      ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     );
@@ -159,10 +360,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                 const SizedBox(height: AppTheme.spacing8),
                 const Text(
                   'Export page',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 const SizedBox(height: AppTheme.spacing12),
                 ...presets.map(
@@ -195,10 +393,12 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
   }
 
   Future<void> _showCustomExportDialog(page_entity.Page page) async {
-    final widthController =
-        TextEditingController(text: page.canvasWidth.toString());
-    final heightController =
-        TextEditingController(text: page.canvasHeight.toString());
+    final widthController = TextEditingController(
+      text: page.canvasWidth.toString(),
+    );
+    final heightController = TextEditingController(
+      text: page.canvasHeight.toString(),
+    );
     String format = 'jpeg';
     int quality = 92;
 
@@ -230,7 +430,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     ),
                     const SizedBox(height: AppTheme.spacing12),
                     DropdownButtonFormField<String>(
-                      value: format,
+                      initialValue: format,
                       decoration: const InputDecoration(labelText: 'Format'),
                       items: const [
                         DropdownMenuItem(value: 'jpeg', child: Text('JPEG')),
@@ -244,7 +444,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     ),
                     const SizedBox(height: AppTheme.spacing12),
                     DropdownButtonFormField<int>(
-                      value: quality,
+                      initialValue: quality,
                       decoration: const InputDecoration(labelText: 'Quality'),
                       items: const [
                         DropdownMenuItem(value: 85, child: Text('85')),
@@ -267,7 +467,8 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final width = int.tryParse(widthController.text.trim()) ?? 0;
+                    final width =
+                        int.tryParse(widthController.text.trim()) ?? 0;
                     final height =
                         int.tryParse(heightController.text.trim()) ?? 0;
                     if (width <= 0 || height <= 0) {
@@ -404,9 +605,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
           title: const Text('New project'),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Project title',
-            ),
+            decoration: const InputDecoration(labelText: 'Project title'),
           ),
           actions: [
             TextButton(
@@ -426,8 +625,10 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
 
     if (created == null || created.isEmpty) return;
     final projectsProvider = context.read<ProjectsProvider>();
-    final project =
-        await projectsProvider.createProject(title: created, description: null);
+    final project = await projectsProvider.createProject(
+      title: created,
+      description: null,
+    );
     if (project == null) return;
 
     setState(() {
@@ -466,10 +667,8 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedProjectId,
-                  decoration: const InputDecoration(
-                    labelText: 'Project',
-                  ),
+                  initialValue: _selectedProjectId,
+                  decoration: const InputDecoration(labelText: 'Project'),
                   items: projectsProvider.projects
                       .map(
                         (project) => DropdownMenuItem(
@@ -483,9 +682,9 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     setState(() {
                       _selectedProjectId = value;
                     });
-                    await context
-                        .read<PageEditorProvider>()
-                        .loadPageForProject(value);
+                    await context.read<PageEditorProvider>().loadPageForProject(
+                      value,
+                    );
                   },
                 ),
               ),
@@ -544,6 +743,13 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                   for (final item in itemsProvider.items)
                     item.id: (item.processedImageUrl ?? item.originalImageUrl),
                 };
+                final statusLookup = {
+                  for (final item in itemsProvider.items)
+                    item.id: item.processingStatus,
+                };
+                final itemLookup = {
+                  for (final item in itemsProvider.items) item.id: item,
+                };
 
                 return Stack(
                   children: [
@@ -553,10 +759,10 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                         color: currentPage != null
                             ? _colorFromHex(currentPage.backgroundColor)
                             : _activeTemplate.backgroundColor,
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusLarge),
-                        border:
-                            Border.all(color: const Color(0xFFE5E7EB)),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge,
+                        ),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
                       ),
                       child: CustomPaint(
                         painter: _activeTemplate.painter,
@@ -569,56 +775,80 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                       final imageUrl = imageLookup[item.itemId];
                       final width = item.width;
                       final height = item.height;
+                      final status = statusLookup[item.itemId] ?? 'unknown';
+                      final itemData = itemLookup[item.itemId];
+                      final isProcessing = status != 'completed';
                       return Positioned(
                         left: item.positionX,
                         top: item.positionY,
                         child: GestureDetector(
-                          onScaleStart: (details) {
-                            final box = _canvasKey.currentContext
-                                ?.findRenderObject() as RenderBox?;
-                            if (box == null) return;
-                            _gestureStart =
-                                box.globalToLocal(details.focalPoint);
-                            _itemStart =
-                                Offset(item.positionX, item.positionY);
-                            _widthStart = item.width;
-                            _heightStart = item.height;
-                            _rotationStart = item.rotation;
-                          },
-                          onScaleUpdate: (details) {
-                            final box = _canvasKey.currentContext
-                                ?.findRenderObject() as RenderBox?;
-                            if (box == null) return;
-                            final focal =
-                                box.globalToLocal(details.focalPoint);
-                            final delta = focal - _gestureStart;
-                            final nextWidth =
-                                (_widthStart * details.scale).clamp(80.0, 420.0);
-                            final nextHeight =
-                                (_heightStart * details.scale).clamp(80.0, 420.0);
-                            final nextOffset = _clampOffset(
-                              _itemStart + delta,
-                              canvasSize,
-                              nextWidth,
-                              nextHeight,
-                            );
+                          onScaleStart: isProcessing
+                              ? null
+                              : (details) {
+                                  final box =
+                                      _canvasKey.currentContext
+                                              ?.findRenderObject()
+                                          as RenderBox?;
+                                  if (box == null) return;
+                                  _gestureStart = box.globalToLocal(
+                                    details.focalPoint,
+                                  );
+                                  _itemStart = Offset(
+                                    item.positionX,
+                                    item.positionY,
+                                  );
+                                  _widthStart = item.width;
+                                  _heightStart = item.height;
+                                  _rotationStart = item.rotation;
+                                },
+                          onScaleUpdate: isProcessing
+                              ? null
+                              : (details) {
+                                  final box =
+                                      _canvasKey.currentContext
+                                              ?.findRenderObject()
+                                          as RenderBox?;
+                                  if (box == null) return;
+                                  final focal = box.globalToLocal(
+                                    details.focalPoint,
+                                  );
+                                  final delta = focal - _gestureStart;
+                                  final nextWidth =
+                                      (_widthStart * details.scale).clamp(
+                                        80.0,
+                                        420.0,
+                                      );
+                                  final nextHeight =
+                                      (_heightStart * details.scale).clamp(
+                                        80.0,
+                                        420.0,
+                                      );
+                                  final nextOffset = _clampOffset(
+                                    _itemStart + delta,
+                                    canvasSize,
+                                    nextWidth,
+                                    nextHeight,
+                                  );
 
-                            pageEditor.setItemTransform(
-                              pageItemId: item.id,
-                              positionX: nextOffset.dx,
-                              positionY: nextOffset.dy,
-                              width: nextWidth,
-                              height: nextHeight,
-                              rotation: _rotationStart + details.rotation,
-                            );
-                          },
-                          onScaleEnd: (_) {
-                            pageEditor.persistItemTransform(
-                              pageItemId: item.id,
-                            );
-                          },
-                          onLongPress: () =>
-                              pageEditor.deletePageItem(item.id),
+                                  pageEditor.setItemTransform(
+                                    pageItemId: item.id,
+                                    positionX: nextOffset.dx,
+                                    positionY: nextOffset.dy,
+                                    width: nextWidth,
+                                    height: nextHeight,
+                                    rotation: _rotationStart + details.rotation,
+                                  );
+                                },
+                          onScaleEnd: isProcessing
+                              ? null
+                              : (_) {
+                                  pageEditor.persistItemTransform(
+                                    pageItemId: item.id,
+                                  );
+                                },
+                          onLongPress: isProcessing
+                              ? null
+                              : () => pageEditor.deletePageItem(item.id),
                           child: Transform(
                             alignment: Alignment.center,
                             transform: Matrix4.identity()
@@ -627,24 +857,218 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                               width: width,
                               height: height,
                               decoration: BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(AppTheme.radiusMedium),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusMedium,
+                                ),
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(
                                   AppTheme.radiusMedium,
                                 ),
-                                child: imageUrl == null
-                                    ? Container(
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    if (imageUrl == null)
+                                      Container(
                                         color: const Color(0xFFE5E7EB),
                                         child: const Center(
-                                          child: Icon(Icons.image_not_supported),
+                                          child: Icon(
+                                            Icons.image_not_supported,
+                                          ),
                                         ),
                                       )
-                                    : Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
+                                    else
+                                      ColorFiltered(
+                                        colorFilter: isProcessing
+                                            ? const ColorFilter.mode(
+                                                Colors.grey,
+                                                BlendMode.saturation,
+                                              )
+                                            : const ColorFilter.mode(
+                                                Colors.transparent,
+                                                BlendMode.multiply,
+                                              ),
+                                        child: Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
+                                    if (isProcessing)
+                                      Positioned.fill(
+                                        child: Container(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.25,
+                                          ),
+                                          child: Align(
+                                            alignment: Alignment.bottomCenter,
+                                            child: Container(
+                                              height: 26,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: status == 'failed'
+                                                    ? AppTheme.errorColor
+                                                          .withValues(
+                                                            alpha: 0.9,
+                                                          )
+                                                    : Colors.black.withValues(
+                                                        alpha: 0.75,
+                                                      ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      status == 'failed'
+                                                          ? 'Failed'
+                                                          : 'Processing...',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  if (status == 'failed' &&
+                                                      itemData != null)
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          itemsProvider
+                                                              .retryItem(
+                                                                itemData,
+                                                              ),
+                                                      style: TextButton.styleFrom(
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                            ),
+                                                        minimumSize: const Size(
+                                                          0,
+                                                          20,
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        'Retry',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  else
+                                                    TextButton(
+                                                      onPressed: () async {
+                                                        final ok = await _confirmAction(
+                                                          title:
+                                                              'Cancel processing?',
+                                                          message:
+                                                              'This stops background removal and keeps the original.',
+                                                          confirmLabel:
+                                                              'Cancel',
+                                                        );
+                                                        if (ok) {
+                                                          await itemsProvider
+                                                              .cancelItem(
+                                                                item.itemId,
+                                                              );
+                                                        }
+                                                      },
+                                                      style: TextButton.styleFrom(
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                            ),
+                                                        minimumSize: const Size(
+                                                          0,
+                                                          20,
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        'Cancel',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  const SizedBox(width: 4),
+                                                  TextButton(
+                                                    onPressed: () async {
+                                                      final ok =
+                                                          await _confirmAction(
+                                                            title:
+                                                                'Delete item?',
+                                                            message:
+                                                                'This will remove the item.',
+                                                            confirmLabel:
+                                                                'Delete',
+                                                          );
+                                                      if (ok) {
+                                                        await itemsProvider
+                                                            .deleteItem(
+                                                              item.itemId,
+                                                            );
+                                                      }
+                                                    },
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                          ),
+                                                      minimumSize: const Size(
+                                                        0,
+                                                        20,
+                                                      ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Delete',
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (status != 'failed') ...[
+                                                    const SizedBox(width: 4),
+                                                    SizedBox(
+                                                      width: 30,
+                                                      child:
+                                                          LinearProgressIndicator(
+                                                            color: Colors.white,
+                                                            backgroundColor:
+                                                                Colors.white
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.3,
+                                                                    ),
+                                                            minHeight: 3,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -670,10 +1094,9 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
           const SizedBox(height: AppTheme.spacing12),
           Text(
             'Tip: drag to move, pinch to scale/rotate, long-press to remove.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppTheme.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
           ),
         ],
       ),
@@ -742,11 +1165,7 @@ class _PageTemplate {
     );
   }
 
-  static List<_PageTemplate> get defaults => [
-        clean(),
-        grid(),
-        split(),
-      ];
+  static List<_PageTemplate> get defaults => [clean(), grid(), split()];
 }
 
 class _ExportPreset {

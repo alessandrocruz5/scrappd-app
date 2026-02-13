@@ -26,4 +26,8 @@ abstract class ItemRepository {
   });
 
   Future<PagedItems> listItems({int page, int perPage});
+
+  Future<void> deleteItem(String itemId);
+
+  Future<void> cancelItem(String itemId);
 }

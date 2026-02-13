@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../core/network/error_helpers.dart';
 
 enum AuthStatus {
   unknown,
@@ -51,7 +52,10 @@ class AuthProvider extends ChangeNotifier {
       _user = await _authRepository.login(email: email, password: password);
       _status = AuthStatus.authenticated;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Login failed. Please try again.',
+      );
       _status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -75,7 +79,10 @@ class AuthProvider extends ChangeNotifier {
       );
       _status = AuthStatus.authenticated;
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Registration failed. Please try again.',
+      );
       _status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
