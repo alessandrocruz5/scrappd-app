@@ -67,15 +67,15 @@ curl -X POST "http://localhost:8000/process" \
 ## Deploy
 
 cd scrappd-ml-service
-docker build -t scrappd-ml:v8 .
+docker build -t scrappd-ml:v9 .
 
 # 2. Tag and push to Artifact Registry
-docker tag scrappd-ml:v8 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v8
-docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v8
+docker tag scrappd-ml:v9 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v9
+docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v9
 
 # 3. Deploy ML Service (GPU-accelerated)
 gcloud run deploy scrappd-ml \
-  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v8 \
+  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v9 \
   --region=asia-southeast1 \
   --platform=managed \
   --memory=16Gi \
