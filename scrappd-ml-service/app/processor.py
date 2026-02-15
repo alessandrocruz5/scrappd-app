@@ -2,14 +2,29 @@ from rembg import remove, new_session
 from PIL import Image, ImageOps
 import io
 import time
+import threading
 from app.config import settings
 
 class BackgroundRemover:
     def __init__(self):
-        """Initialize the background remover with BiRefNet model"""
+        """Initialize the background remover (lazy model loading)"""
+        self.session = None
+        self._lock = threading.Lock()
+        self._loading = False
+        self._loaded = False
+
+    def load_model(self):
+        """Load the model in the background"""
+        self._loading = True
         print(f"Loading model: {settings.model_name}...")
         self.session = new_session(settings.model_name)
+        self._loaded = True
+        self._loading = False
         print("✓ Model loaded successfully")
+
+    @property
+    def is_ready(self) -> bool:
+        return self._loaded
     
     def process_image(self, image_bytes: bytes) -> tuple[bytes, float]:
         """
@@ -75,5 +90,5 @@ class BackgroundRemover:
         
         return output_bytes, processing_time
 
-# Global instance (loaded once when service starts)
+# Global instance (model loaded asynchronously after server starts)
 background_remover = BackgroundRemover()

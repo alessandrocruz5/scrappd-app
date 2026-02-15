@@ -1,15 +1,25 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import Response
 import time
+import threading
 
 from app.config import settings
 from app.models import ProcessResponse, HealthResponse
 from app.processor import background_remover
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load model in a background thread so health checks respond immediately
+    thread = threading.Thread(target=background_remover.load_model, daemon=True)
+    thread.start()
+    yield
+
 app = FastAPI(
     title=settings.service_name,
     version=settings.version,
-    debug=settings.debug
+    debug=settings.debug,
+    lifespan=lifespan,
 )
 
 @app.get("/", response_model=HealthResponse)
@@ -60,6 +70,12 @@ async def remove_background(file: UploadFile = File(...)):
             detail=f"File too large. Max size: {settings.max_image_size / 1024 / 1024}MB"
         )
     
+    if not background_remover.is_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="Model is still loading. Please try again shortly."
+        )
+
     try:
         # Process image
         processed_bytes, processing_time = background_remover.process_image(image_bytes)
