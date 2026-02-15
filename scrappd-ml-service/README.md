@@ -82,6 +82,7 @@ gcloud run deploy scrappd-ml \
   --cpu=4 \
   --gpu=1 \
   --gpu-type=nvidia-l4 \
+  --no-gpu-zonal-redundancy \
   --timeout=300 \
   --concurrency=4 \
   --min-instances=0 \
