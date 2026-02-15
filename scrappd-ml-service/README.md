@@ -102,3 +102,7 @@ gcloud run deploy scrappd-ml \
 gcloud run revisions delete scrappd-ml-00023-wvq \
   --region=asia-southeast1 \
   --project=scrappd-prod
+
+  gcloud run services update scrappd-ml \
+  --region=asia-southeast1 \
+  --update-env-vars="MODEL_NAME=[model-name]"
