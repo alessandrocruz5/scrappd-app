@@ -84,9 +84,9 @@ gcloud run deploy scrappd-ml \
   --gpu-type=nvidia-l4 \
   --no-gpu-zonal-redundancy \
   --timeout=300 \
-  --concurrency=4 \
+  --concurrency=1 \
   --min-instances=0 \
-  --max-instances=3 \
+  --max-instances=1 \
   --no-allow-unauthenticated \
   --set-env-vars="ENVIRONMENT=production"
 
