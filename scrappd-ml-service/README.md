@@ -67,22 +67,31 @@ curl -X POST "http://localhost:8000/process" \
 ## Deploy
 
 cd scrappd-ml-service
-docker build --platform linux/amd64 -t scrappd-ml:v7 .
+docker build -t scrappd-ml:v8 .
 
 # 2. Tag and push to Artifact Registry
-docker tag scrappd-ml:v7 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v7
-docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v7
+docker tag scrappd-ml:v8 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v8
+docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v8
 
-# 3. Deploy ML Service
+# 3. Deploy ML Service (GPU-accelerated)
 gcloud run deploy scrappd-ml \
-  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v7 \
+  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v8 \
   --region=asia-southeast1 \
   --platform=managed \
   --memory=16Gi \
   --cpu=4 \
+  --gpu=1 \
+  --gpu-type=nvidia-l4 \
   --timeout=300 \
-  --concurrency=1 \
+  --concurrency=4 \
   --min-instances=0 \
   --max-instances=3 \
   --no-allow-unauthenticated \
   --set-env-vars="ENVIRONMENT=production"
+
+### GPU Deployment Notes
+- GPU instances require `--gpu=1 --gpu-type=nvidia-l4`
+- L4 GPUs on Cloud Run are available in: us-central1, europe-west4, asia-southeast1
+- GPU instances have longer cold starts (~20-60s) but dramatically faster inference
+- With GPU, concurrency can be increased from 1 to 4+
+- Consider `--min-instances=1` in production to avoid GPU cold starts (at additional cost)

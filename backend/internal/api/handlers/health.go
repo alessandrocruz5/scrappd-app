@@ -14,7 +14,6 @@ import (
 type HealthHandler struct {
 	mlClient services.MLClient
 	db       DBHealthChecker
-	redis    RedisHealthChecker
 	storage  StorageHealthChecker
 }
 
@@ -22,20 +21,15 @@ type DBHealthChecker interface {
 	Health(ctx context.Context) error
 }
 
-type RedisHealthChecker interface {
-	Ping(ctx context.Context) error
-}
-
 type StorageHealthChecker interface {
 	HealthCheck(ctx context.Context) error
 }
 
 // NewHealthHandler creates a new health handler
-func NewHealthHandler(mlClient services.MLClient, db DBHealthChecker, redis RedisHealthChecker, storage StorageHealthChecker) *HealthHandler {
+func NewHealthHandler(mlClient services.MLClient, db DBHealthChecker, storage StorageHealthChecker) *HealthHandler {
 	return &HealthHandler{
 		mlClient: mlClient,
 		db:       db,
-		redis:    redis,
 		storage:  storage,
 	}
 }
@@ -103,13 +97,6 @@ func (h *HealthHandler) DeepHealth(c *gin.Context) {
 	dbHealth := h.checkDatabase(ctx)
 	services["database"] = dbHealth
 	if dbHealth.Status == StatusUnhealthy {
-		overallStatus = StatusDegraded
-	}
-
-	// Check Redis
-	redisHealth := h.checkRedis(ctx)
-	services["redis"] = redisHealth
-	if redisHealth.Status == StatusUnhealthy {
 		overallStatus = StatusDegraded
 	}
 
@@ -187,27 +174,6 @@ func (h *HealthHandler) checkDatabase(ctx context.Context) ServiceHealth {
 	}
 }
 
-func (h *HealthHandler) checkRedis(ctx context.Context) ServiceHealth {
-	if h.redis == nil {
-		return ServiceHealth{
-			Status:  StatusUnhealthy,
-			Message: "Redis health check not configured",
-		}
-	}
-
-	if err := h.redis.Ping(ctx); err != nil {
-		return ServiceHealth{
-			Status:  StatusUnhealthy,
-			Message: "Redis is unreachable",
-		}
-	}
-
-	return ServiceHealth{
-		Status:  StatusHealthy,
-		Message: "Redis is operational",
-	}
-}
-
 func (h *HealthHandler) checkStorage(ctx context.Context) ServiceHealth {
 	if h.storage == nil {
 		return ServiceHealth{
@@ -242,18 +208,13 @@ func (h *HealthHandler) ReadinessProbe(c *gin.Context) {
 	defer cancel()
 
 	// Check critical dependencies
-	if h.db == nil || h.redis == nil || h.storage == nil {
+	if h.db == nil || h.storage == nil {
 		utils.RespondError(c, utils.ErrServiceUnavailable("API", nil))
 		return
 	}
 
 	if err := h.db.Health(ctx); err != nil {
 		utils.RespondError(c, utils.ErrServiceUnavailable("Database", err))
-		return
-	}
-
-	if err := h.redis.Ping(ctx); err != nil {
-		utils.RespondError(c, utils.ErrServiceUnavailable("Redis", err))
 		return
 	}
 
