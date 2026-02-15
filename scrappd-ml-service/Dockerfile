@@ -10,6 +10,7 @@ WORKDIR /app
 # Install Python 3.11 and system dependencies
 RUN apt-get update && apt-get install -y \
     software-properties-common \
+    curl \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update && apt-get install -y \
     python3.11 \
@@ -38,12 +39,13 @@ COPY app/ ./app/
 # Download model on build (so it's cached in the image)
 RUN python -c "from rembg import new_session; new_session('birefnet-general')"
 
-# Expose port
-EXPOSE 8000
+# Cloud Run injects PORT (default 8080)
+ENV PORT=8080
+EXPOSE ${PORT}
 
-# Health check (longer start period for GPU cold starts)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
+# Health check for local Docker usage
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application on the Cloud Run PORT
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
