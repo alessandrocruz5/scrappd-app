@@ -67,15 +67,15 @@ curl -X POST "http://localhost:8000/process" \
 ## Deploy
 
 cd scrappd-ml-service
-docker build -t scrappd-ml:v9 .
+docker build -t scrappd-ml:v11 .
 
 # 2. Tag and push to Artifact Registry
-docker tag scrappd-ml:v9 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v9
-docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v9
+docker tag scrappd-ml:v11 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v11
+docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v11
 
 # 3. Deploy ML Service (GPU-accelerated)
 gcloud run deploy scrappd-ml \
-  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v9 \
+  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v11 \
   --region=asia-southeast1 \
   --platform=managed \
   --memory=16Gi \
@@ -88,6 +88,8 @@ gcloud run deploy scrappd-ml \
   --max-instances=1 \
   --no-allow-unauthenticated \
   --no-gpu-zonal-redundancy \
+  --cpu-boost \
+  --startup-probe="tcpSocket.port=8080,periodSeconds=60,failureThreshold=10,timeoutSeconds=10,initialDelaySeconds=0" \
   --set-env-vars="ENVIRONMENT=production"
 
 ### GPU Deployment Notes
@@ -96,3 +98,7 @@ gcloud run deploy scrappd-ml \
 - GPU instances have longer cold starts (~20-60s) but dramatically faster inference
 - With GPU, concurrency can be increased from 1 to 4+
 - Consider `--min-instances=1` in production to avoid GPU cold starts (at additional cost)
+
+gcloud run revisions delete scrappd-ml-00023-wvq \
+  --region=asia-southeast1 \
+  --project=scrappd-prod
