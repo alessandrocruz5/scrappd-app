@@ -52,15 +52,6 @@ func (m *MockDBHealth) Health(ctx context.Context) error {
 	return args.Error(0)
 }
 
-type MockRedisHealth struct {
-	mock.Mock
-}
-
-func (m *MockRedisHealth) Ping(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
 type MockStorageHealth struct {
 	mock.Mock
 }
@@ -72,7 +63,7 @@ func (m *MockStorageHealth) HealthCheck(ctx context.Context) error {
 
 func TestBasicHealth(t *testing.T) {
 	mockMLClient := new(MockMLClient)
-	handler := NewHealthHandler(mockMLClient, nil, nil, nil)
+	handler := NewHealthHandler(mockMLClient, nil, nil)
 
 	router := setupTestRouter()
 	router.GET("/health", handler.BasicHealth)
@@ -102,11 +93,9 @@ func TestBasicHealth(t *testing.T) {
 func TestDeepHealth_AllServicesHealthy(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	mockDB := new(MockDBHealth)
-	mockRedis := new(MockRedisHealth)
 	mockStorage := new(MockStorageHealth)
 
 	mockDB.On("Health", mock.Anything).Return(nil)
-	mockRedis.On("Ping", mock.Anything).Return(nil)
 	mockStorage.On("HealthCheck", mock.Anything).Return(nil)
 	mockMLClient.On("HealthCheck", mock.Anything).Return(&models.HealthCheckResponse{
 		Status:  "healthy",
@@ -115,7 +104,7 @@ func TestDeepHealth_AllServicesHealthy(t *testing.T) {
 		Time:    time.Now(),
 	}, nil)
 
-	handler := NewHealthHandler(mockMLClient, mockDB, mockRedis, mockStorage)
+	handler := NewHealthHandler(mockMLClient, mockDB, mockStorage)
 
 	router := setupTestRouter()
 	router.GET("/health/deep", handler.DeepHealth)
@@ -147,18 +136,16 @@ func TestDeepHealth_AllServicesHealthy(t *testing.T) {
 func TestDeepHealth_MLServiceUnhealthy(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	mockDB := new(MockDBHealth)
-	mockRedis := new(MockRedisHealth)
 	mockStorage := new(MockStorageHealth)
 
 	mockDB.On("Health", mock.Anything).Return(nil)
-	mockRedis.On("Ping", mock.Anything).Return(nil)
 	mockStorage.On("HealthCheck", mock.Anything).Return(nil)
 	mockMLClient.On("HealthCheck", mock.Anything).Return(
 		nil,
 		utils.ErrServiceUnavailable("ML", errors.New("connection refused")),
 	)
 
-	handler := NewHealthHandler(mockMLClient, mockDB, mockRedis, mockStorage)
+	handler := NewHealthHandler(mockMLClient, mockDB, mockStorage)
 
 	router := setupTestRouter()
 	router.GET("/health/deep", handler.DeepHealth)
@@ -190,11 +177,9 @@ func TestDeepHealth_MLServiceUnhealthy(t *testing.T) {
 func TestDeepHealth_MLServiceReportsUnhealthy(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	mockDB := new(MockDBHealth)
-	mockRedis := new(MockRedisHealth)
 	mockStorage := new(MockStorageHealth)
 
 	mockDB.On("Health", mock.Anything).Return(nil)
-	mockRedis.On("Ping", mock.Anything).Return(nil)
 	mockStorage.On("HealthCheck", mock.Anything).Return(nil)
 	mockMLClient.On("HealthCheck", mock.Anything).Return(&models.HealthCheckResponse{
 		Status:  "unhealthy",
@@ -203,7 +188,7 @@ func TestDeepHealth_MLServiceReportsUnhealthy(t *testing.T) {
 		Time:    time.Now(),
 	}, nil)
 
-	handler := NewHealthHandler(mockMLClient, mockDB, mockRedis, mockStorage)
+	handler := NewHealthHandler(mockMLClient, mockDB, mockStorage)
 
 	router := setupTestRouter()
 	router.GET("/health/deep", handler.DeepHealth)
@@ -232,11 +217,9 @@ func TestDeepHealth_MLServiceReportsUnhealthy(t *testing.T) {
 func TestReadinessProbe_Ready(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	mockDB := new(MockDBHealth)
-	mockRedis := new(MockRedisHealth)
 	mockStorage := new(MockStorageHealth)
 
 	mockDB.On("Health", mock.Anything).Return(nil)
-	mockRedis.On("Ping", mock.Anything).Return(nil)
 	mockStorage.On("HealthCheck", mock.Anything).Return(nil)
 	mockMLClient.On("HealthCheck", mock.Anything).Return(&models.HealthCheckResponse{
 		Status:  "healthy",
@@ -245,7 +228,7 @@ func TestReadinessProbe_Ready(t *testing.T) {
 		Time:    time.Now(),
 	}, nil)
 
-	handler := NewHealthHandler(mockMLClient, mockDB, mockRedis, mockStorage)
+	handler := NewHealthHandler(mockMLClient, mockDB, mockStorage)
 
 	router := setupTestRouter()
 	router.GET("/health/ready", handler.ReadinessProbe)
@@ -271,18 +254,16 @@ func TestReadinessProbe_Ready(t *testing.T) {
 func TestReadinessProbe_NotReady(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	mockDB := new(MockDBHealth)
-	mockRedis := new(MockRedisHealth)
 	mockStorage := new(MockStorageHealth)
 
 	mockDB.On("Health", mock.Anything).Return(nil)
-	mockRedis.On("Ping", mock.Anything).Return(nil)
 	mockStorage.On("HealthCheck", mock.Anything).Return(nil)
 	mockMLClient.On("HealthCheck", mock.Anything).Return(
 		nil,
 		utils.ErrServiceUnavailable("ML", errors.New("connection timeout")),
 	)
 
-	handler := NewHealthHandler(mockMLClient, mockDB, mockRedis, mockStorage)
+	handler := NewHealthHandler(mockMLClient, mockDB, mockStorage)
 
 	router := setupTestRouter()
 	router.GET("/health/ready", handler.ReadinessProbe)
@@ -306,7 +287,7 @@ func TestReadinessProbe_NotReady(t *testing.T) {
 
 func TestLivenessProbe(t *testing.T) {
 	mockMLClient := new(MockMLClient)
-	handler := NewHealthHandler(mockMLClient, nil, nil, nil)
+	handler := NewHealthHandler(mockMLClient, nil, nil)
 
 	router := setupTestRouter()
 	router.GET("/health/live", handler.LivenessProbe)
@@ -333,11 +314,9 @@ func TestLivenessProbe(t *testing.T) {
 func TestHealthHandler_ContextTimeout(t *testing.T) {
 	mockMLClient := new(MockMLClient)
 	mockDB := new(MockDBHealth)
-	mockRedis := new(MockRedisHealth)
 	mockStorage := new(MockStorageHealth)
 
 	mockDB.On("Health", mock.Anything).Return(nil)
-	mockRedis.On("Ping", mock.Anything).Return(nil)
 	mockStorage.On("HealthCheck", mock.Anything).Return(nil)
 	mockMLClient.On("HealthCheck", mock.Anything).Run(func(args mock.Arguments) {
 		// Simulate slow response
@@ -350,7 +329,7 @@ func TestHealthHandler_ContextTimeout(t *testing.T) {
 		}
 	}).Return(nil, context.DeadlineExceeded)
 
-	handler := NewHealthHandler(mockMLClient, mockDB, mockRedis, mockStorage)
+	handler := NewHealthHandler(mockMLClient, mockDB, mockStorage)
 
 	router := setupTestRouter()
 	router.GET("/health/deep", handler.DeepHealth)

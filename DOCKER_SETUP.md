@@ -41,12 +41,11 @@ make ml-logs        # ML service logs
 
 ## Optional Tools
 ```bash
-# Start pgAdmin + Redis Commander
+# Start pgAdmin
 make tools-up
 
 # Access:
 # - pgAdmin: http://localhost:5050 (admin@scrappd.local / admin)
-# - Redis Commander: http://localhost:8081
 ```
 
 ## Troubleshooting
@@ -67,8 +66,6 @@ make services-down
 ## Port Reference
 
 - **5433** - PostgreSQL (host → container 5432)
-- **6379** - Redis  
 - **8000** - ML Service
 - **8080** - Backend API
 - **5050** - pgAdmin (with --profile tools)
-- **8081** - Redis Commander (with --profile tools)

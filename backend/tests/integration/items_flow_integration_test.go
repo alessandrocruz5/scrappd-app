@@ -102,16 +102,6 @@ func (s *inMemoryStorage) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-type stubRedis struct{}
-
-func (s *stubRedis) Ping(ctx context.Context) error {
-	return nil
-}
-
-func (s *stubRedis) Close() error {
-	return nil
-}
-
 type stubTaskQueue struct{}
 
 func (s *stubTaskQueue) EnqueueProcessItem(ctx context.Context, payload services.ProcessItemTaskPayload) error {
@@ -161,7 +151,6 @@ func TestItemsFlow_Integration(t *testing.T) {
 		pageRenderService,
 		usageService,
 		db,
-		&stubRedis{},
 		storage,
 		tokenManager,
 		"test-internal-secret",

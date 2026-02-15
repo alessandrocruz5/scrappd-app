@@ -88,12 +88,6 @@ func main() {
 		}
 	}
 
-	redisClient, err := services.NewRedisClient(&cfg.Redis)
-	if err != nil {
-		logger.Fatalf("Failed to initialize Redis client: %v", err)
-	}
-	defer redisClient.Close()
-
 	itemsService := services.NewItemsService(
 		itemsRepo,
 		usageService,
@@ -120,7 +114,6 @@ func main() {
 		pageRenderService,
 		usageService,
 		db,
-		redisClient,
 		storage,
 		tokenManager,
 		cfg.App.InternalTaskSecret,

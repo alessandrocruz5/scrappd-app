@@ -12,7 +12,6 @@ import (
 type Config struct {
 	Server     ServerConfig
 	Database   DatabaseConfig
-	Redis      RedisConfig
 	MLService  MLServiceConfig
 	Storage    StorageConfig
 	CloudTasks CloudTasksConfig
@@ -38,14 +37,6 @@ type DatabaseConfig struct {
 	DBName   string
 	SSLMode  string
 	DSN      string
-}
-
-type RedisConfig struct {
-	URL      string
-	Host     string
-	Port     string
-	Password string
-	DB       int
 }
 
 type MLServiceConfig struct {
@@ -121,13 +112,6 @@ func Load() (*Config, error) {
 			Password: getEnv("DB_PASSWORD", "usTiCr$9S%B5u2"),
 			DBName:   getEnv("DB_NAME", "scrappd"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
-		},
-		Redis: RedisConfig{
-			URL:      getEnv("REDIS_URL", ""),
-			Host:     getEnv("REDIS_HOST", "localhost"),
-			Port:     getEnv("REDIS_PORT", "6379"),
-			Password: getEnv("REDIS_PASSWORD", ""),
-			DB:       getIntEnv("REDIS_DB", 0),
 		},
 		MLService: MLServiceConfig{
 			BaseURL:    getEnv("ML_SERVICE_URL", "http://localhost:8000"),

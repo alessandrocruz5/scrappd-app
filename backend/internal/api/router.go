@@ -20,7 +20,6 @@ func SetupRouter(
 	pageRenderService services.PageRenderService,
 	usageService services.UsageService,
 	dbHealth handlers.DBHealthChecker,
-	redisHealth handlers.RedisHealthChecker,
 	storageHealth handlers.StorageHealthChecker,
 	tokenManager *auth.TokenManager,
 	internalSecret string,
@@ -36,7 +35,7 @@ func SetupRouter(
 	router.Use(middleware.RateLimitHeaders(usageService, logger))
 
 	// Initialize handlers
-	healthHandler := handlers.NewHealthHandler(mlClient, dbHealth, redisHealth, storageHealth)
+	healthHandler := handlers.NewHealthHandler(mlClient, dbHealth, storageHealth)
 	mlHandler := handlers.NewMLHandler(mlClient)
 	authHandler := handlers.NewAuthHandler(authService)
 	itemsHandler := handlers.NewItemsHandler(itemsService)
