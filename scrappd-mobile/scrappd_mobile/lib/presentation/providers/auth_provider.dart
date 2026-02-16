@@ -89,6 +89,21 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> requestPasswordReset({required String email}) async {
+    _setLoading(true);
+    _errorMessage = null;
+    try {
+      await _authRepository.requestPasswordReset(email: email);
+    } catch (e) {
+      _errorMessage = mapErrorMessage(
+        e,
+        fallback: 'Failed to request password reset.',
+      );
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> logout() async {
     _setLoading(true);
     try {

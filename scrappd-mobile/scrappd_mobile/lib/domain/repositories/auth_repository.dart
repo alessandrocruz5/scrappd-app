@@ -10,5 +10,6 @@ abstract class AuthRepository {
   });
   Future<User> getMe();
   Future<void> logout();
+  Future<void> requestPasswordReset({required String email});
   bool get hasSession;
 }
