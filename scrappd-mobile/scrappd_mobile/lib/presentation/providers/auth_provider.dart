@@ -4,11 +4,7 @@ import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../core/network/error_helpers.dart';
 
-enum AuthStatus {
-  unknown,
-  authenticated,
-  unauthenticated,
-}
+enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider(this._authRepository);
@@ -24,6 +20,7 @@ class AuthProvider extends ChangeNotifier {
   User? get user => _user;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get hasSession => _authRepository.hasSession;
 
   Future<void> initialize() async {
     if (_status != AuthStatus.unknown) return;

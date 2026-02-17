@@ -7,19 +7,19 @@ import '../items/items_gallery_screen.dart';
 import '../pages/page_editor_screen.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, this.initialIndex = 0});
+  const MainShell({super.key, this.initialIndex = 1});
 
   final int initialIndex;
 
-  static _MainShellState? of(BuildContext context) {
-    return context.findAncestorStateOfType<_MainShellState>();
+  static MainShellState? of(BuildContext context) {
+    return context.findAncestorStateOfType<MainShellState>();
   }
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<MainShell> createState() => MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class MainShellState extends State<MainShell> {
   late int _index;
 
   @override

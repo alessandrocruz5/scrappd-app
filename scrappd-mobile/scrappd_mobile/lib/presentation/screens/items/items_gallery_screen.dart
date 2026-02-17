@@ -17,7 +17,10 @@ class _ItemsGalleryScreenState extends State<ItemsGalleryScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<ItemsProvider>().loadItems());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ItemsProvider>().loadItems();
+    });
   }
 
   Future<bool> _confirmAction({
@@ -81,6 +84,30 @@ class _ItemsGalleryScreenState extends State<ItemsGalleryScreen> {
           onRefresh: () => provider.loadItems(refresh: true),
           child: Column(
             children: [
+              if (provider.hasProcessingItems)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTheme.spacing16,
+                    AppTheme.spacing12,
+                    AppTheme.spacing16,
+                    AppTheme.spacing8,
+                  ),
+                  color: AppTheme.surfaceColor,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        provider.processingItemCount == 1
+                            ? '1 item is processing'
+                            : '${provider.processingItemCount} items are processing',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: AppTheme.spacing8),
+                      const LinearProgressIndicator(),
+                    ],
+                  ),
+                ),
               if (provider.errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.all(AppTheme.spacing16),

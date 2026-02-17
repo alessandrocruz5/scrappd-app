@@ -64,45 +64,59 @@ curl -X POST "http://localhost:8000/process" \
   --output result.png
 ```
 
-## Deploy
+## Deploy (CPU-only)
 
+```bash
 cd scrappd-ml-service
-docker build -t scrappd-ml:v11 .
 
-# 2. Tag and push to Artifact Registry
-docker tag scrappd-ml:v11 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v11
-docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v11
+# 1. Build image
+# Note: docker buildx is not required on this machine.
+docker build --platform linux/amd64 \
+  -t asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v13 .
 
-# 3. Deploy ML Service (GPU-accelerated)
+# 2. Push to Artifact Registry
+docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v13
+
+# 3. Deploy Cloud Run (CPU-only)
 gcloud run deploy scrappd-ml \
-  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v11 \
+  --project=scrappd-prod \
   --region=asia-southeast1 \
+  --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v13 \
   --platform=managed \
-  --memory=16Gi \
-  --cpu=4 \
-  --gpu=1 \
-  --gpu-type=nvidia-l4 \
+  --cpu=8 \
+  --memory=8Gi \
+  --gpu=0 \
   --timeout=300 \
-  --concurrency=4 \
+  --concurrency=2 \
   --min-instances=1 \
-  --max-instances=1 \
+  --max-instances=3 \
   --no-allow-unauthenticated \
-  --no-gpu-zonal-redundancy \
   --cpu-boost \
-  --startup-probe="tcpSocket.port=8080,periodSeconds=60,failureThreshold=10,timeoutSeconds=10,initialDelaySeconds=0" \
-  --set-env-vars="ENVIRONMENT=production"
+  --set-env-vars="ENVIRONMENT=production,MODEL_NAME=birefnet-general-lite"
 
-### GPU Deployment Notes
-- GPU instances require `--gpu=1 --gpu-type=nvidia-l4`
-- L4 GPUs on Cloud Run are available in: us-central1, europe-west4, asia-southeast1
-- GPU instances have longer cold starts (~20-60s) but dramatically faster inference
-- With GPU, concurrency can be increased from 1 to 4+
-- Consider `--min-instances=1` in production to avoid GPU cold starts (at additional cost)
-
-gcloud run revisions delete scrappd-ml-00023-wvq \
+# 4. Verify resources (must NOT include nvidia.com/gpu)
+gcloud run services describe scrappd-ml \
+  --project=scrappd-prod \
   --region=asia-southeast1 \
-  --project=scrappd-prod
+  --format='yaml(spec.template.spec.containers[0].resources.limits,spec.template.spec.containerConcurrency,status.latestReadyRevisionName)'
+```
 
-  gcloud run services update scrappd-ml \
+## Notes
+
+- This service is private (`--no-allow-unauthenticated`), so direct `curl` without auth returns `403`.
+- For authenticated health checks:
+
+```bash
+TOKEN=$(gcloud auth print-identity-token)
+curl -H "Authorization: Bearer ${TOKEN}" \
+  https://scrappd-ml-755228083251.asia-southeast1.run.app/health
+```
+
+- To change model without a full redeploy:
+
+```bash
+gcloud run services update scrappd-ml \
+  --project=scrappd-prod \
   --region=asia-southeast1 \
-  --update-env-vars="MODEL_NAME=[model-name]"
+  --update-env-vars="MODEL_NAME=birefnet-general-lite"
+```

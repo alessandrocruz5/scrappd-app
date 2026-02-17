@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import 'main_shell.dart';
@@ -17,7 +16,10 @@ class _RootScreenState extends State<RootScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<AuthProvider>().initialize());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthProvider>().initialize();
+    });
   }
 
   @override
@@ -30,45 +32,11 @@ class _RootScreenState extends State<RootScreen> {
           case AuthStatus.unauthenticated:
             return const LoginScreen();
           case AuthStatus.unknown:
-          default:
-            return const _SplashScreen();
+            return authProvider.hasSession
+                ? const MainShell()
+                : const LoginScreen();
         }
       },
-    );
-  }
-}
-
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.auto_fix_high, size: 72, color: Colors.white),
-              SizedBox(height: AppTheme.spacing24),
-              Text(
-                "Scrapp'd",
-                style: TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              SizedBox(height: AppTheme.spacing16),
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

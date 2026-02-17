@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/entities/item.dart';
@@ -42,6 +41,9 @@ class ItemsProvider extends ChangeNotifier {
   List<Item> get items => _items;
   int get page => _page;
   int get totalPages => _totalPages;
+  int get processingItemCount =>
+      _items.where((item) => _isProcessingStatus(item.processingStatus)).length;
+  bool get hasProcessingItems => processingItemCount > 0;
 
   Future<void> loadItems({bool refresh = false}) async {
     if (_isLoading) return;
@@ -283,6 +285,11 @@ class ItemsProvider extends ChangeNotifier {
     if (_latestItem?.id == itemId && updated != null) {
       _latestItem = updated;
     }
+  }
+
+  bool _isProcessingStatus(String status) {
+    final normalized = status.trim().toLowerCase();
+    return normalized != 'completed' && normalized != 'failed';
   }
 
   @override

@@ -86,11 +86,11 @@ class _CreateItemScreenState extends State<CreateItemScreen> {
     if (provider.uploadState == UploadState.success) {
       final shell = MainShell.of(context);
       if (shell != null) {
-        shell.setIndex(2);
+        shell.setIndex(1);
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 2)),
+          MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 1)),
         );
       }
     } else if (provider.uploadState == UploadState.error &&
