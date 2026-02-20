@@ -17,12 +17,13 @@ gcloud run services add-iam-policy-binding scrappd-ml \
 go get google.golang.org/api/idtoken
 # Rebuild with updated ml_client.go
 # Build/push new image (bump vN)
-docker buildx --platform linux/amd64 -t scrappd-api:v15 .
-docker tag scrappd-api:v15 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-api:v15
-docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-api:v15
+docker buildx build --platform linux/amd64 -t asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-api:v16 --push .
+docker build --platform linux/amd64 -t scrappd-api:v16 .
+docker tag scrappd-api:v16 asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-api:v16
+docker push asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-api:v16
 
 gcloud run deploy scrappd-api \
-    --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-api:v15 \
+    --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-api:v16 \
     --region=asia-southeast1 \
     --platform=managed \
     --memory=512Mi \

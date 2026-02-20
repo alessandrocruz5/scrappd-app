@@ -71,6 +71,8 @@ cd scrappd-ml-service
 
 # 1. Build image
 # Note: docker buildx is not required on this machine.
+docker buildx build --platform linux/amd64 -t asia-southeast1-docker.pkg.dev/scrappd-
+  prod/scrappd-repo/scrappd-ml:v13 --push .
 docker build --platform linux/amd64 \
   -t asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v13 .
 
@@ -84,15 +86,28 @@ gcloud run deploy scrappd-ml \
   --image=asia-southeast1-docker.pkg.dev/scrappd-prod/scrappd-repo/scrappd-ml:v13 \
   --platform=managed \
   --cpu=8 \
-  --memory=8Gi \
+  --memory=16Gi \
   --gpu=0 \
   --timeout=300 \
-  --concurrency=2 \
+  --concurrency=1 \
   --min-instances=1 \
-  --max-instances=3 \
+  --max-instances=5 \
   --no-allow-unauthenticated \
   --cpu-boost \
   --set-env-vars="ENVIRONMENT=production,MODEL_NAME=birefnet-general-lite"
+
+# 3.1 Update Cloud Run
+gcloud run services update scrappd-ml \
+  --project=scrappd-prod \
+  --region=asia-southeast1 \
+  --cpu=8 \
+  --memory=16Gi \
+  --timeout=300 \
+  --concurrency=1 \
+  --min-instances=1 \
+  --max-instances=5 \
+  --cpu-boost \
+  --update-env-vars="ENVIRONMENT=production,MODEL_NAME=birefnet-general-lite"
 
 # 4. Verify resources (must NOT include nvidia.com/gpu)
 gcloud run services describe scrappd-ml \

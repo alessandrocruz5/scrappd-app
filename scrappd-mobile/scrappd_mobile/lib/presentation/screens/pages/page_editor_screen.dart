@@ -139,7 +139,10 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                                       Colors.transparent,
                                       BlendMode.multiply,
                                     ),
-                              child: Image.network(imageUrl, fit: BoxFit.cover),
+                              child: Image.network(
+                                imageUrl,
+                                fit: BoxFit.contain,
+                              ),
                             ),
                             if (isProcessing)
                               Positioned.fill(
@@ -890,7 +893,7 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                                               ),
                                         child: Image.network(
                                           imageUrl,
-                                          fit: BoxFit.cover,
+                                          fit: BoxFit.contain,
                                         ),
                                       ),
                                     if (isProcessing)

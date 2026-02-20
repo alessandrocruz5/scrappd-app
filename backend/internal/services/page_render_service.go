@@ -146,8 +146,8 @@ func (s *pageRenderService) RenderPage(ctx context.Context, userID, pageID uuid.
 			continue
 		}
 
-		// Match the editor's BoxFit.cover behavior to avoid aspect ratio warping.
-		resized := imaging.Fill(decoded, targetW, targetH, imaging.Center, imaging.Lanczos)
+		// Match the editor's BoxFit.contain behavior to keep the full subject visible.
+		resized := fitImageInFrame(decoded, targetW, targetH)
 		angleDeg := pageItem.Rotation * 180 / math.Pi
 		rotated := imaging.Rotate(resized, angleDeg, color.Transparent)
 
@@ -239,6 +239,26 @@ func applyOpacity(src image.Image, opacity float64) *image.NRGBA {
 		}
 	}
 	return dst
+}
+
+func fitImageInFrame(src image.Image, targetW, targetH int) *image.NRGBA {
+	fitted := imaging.Fit(src, targetW, targetH, imaging.Lanczos)
+	frame := image.NewNRGBA(image.Rect(0, 0, targetW, targetH))
+	offsetX := (targetW - fitted.Bounds().Dx()) / 2
+	offsetY := (targetH - fitted.Bounds().Dy()) / 2
+	draw.Draw(
+		frame,
+		image.Rect(
+			offsetX,
+			offsetY,
+			offsetX+fitted.Bounds().Dx(),
+			offsetY+fitted.Bounds().Dy(),
+		),
+		fitted,
+		image.Point{},
+		draw.Over,
+	)
+	return frame
 }
 
 func fetchRemoteImage(ctx context.Context, url string) (image.Image, error) {
