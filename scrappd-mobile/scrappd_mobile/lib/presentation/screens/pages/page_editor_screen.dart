@@ -38,6 +38,32 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
   double _rotationStart = 0.0;
   bool _isExporting = false;
 
+  ({double x, double y}) _canvasToPageScale({
+    required Size canvasSize,
+    required page_entity.Page page,
+  }) {
+    if (canvasSize.width <= 0 || canvasSize.height <= 0) {
+      return (x: 1.0, y: 1.0);
+    }
+    return (
+      x: page.canvasWidth / canvasSize.width,
+      y: page.canvasHeight / canvasSize.height,
+    );
+  }
+
+  ({double x, double y}) _pageToCanvasScale({
+    required Size canvasSize,
+    required page_entity.Page page,
+  }) {
+    if (page.canvasWidth <= 0 || page.canvasHeight <= 0) {
+      return (x: 1.0, y: 1.0);
+    }
+    return (
+      x: canvasSize.width / page.canvasWidth,
+      y: canvasSize.height / page.canvasHeight,
+    );
+  }
+
   Future<bool> _confirmAction({
     required String title,
     required String message,
@@ -319,7 +345,13 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
 
   Future<void> _addItem(String itemId, Size canvasSize) async {
     final pageEditor = context.read<PageEditorProvider>();
-    if (pageEditor.currentPage == null) return;
+    final currentPage = pageEditor.currentPage;
+    if (currentPage == null) return;
+
+    final toPage = _canvasToPageScale(
+      canvasSize: canvasSize,
+      page: currentPage,
+    );
 
     final position = Offset(
       canvasSize.width * 0.5 - _baseItemSize / 2,
@@ -328,10 +360,10 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
 
     await pageEditor.addPageItem(
       itemId: itemId,
-      positionX: position.dx,
-      positionY: position.dy,
-      width: _baseItemSize,
-      height: _baseItemSize,
+      positionX: position.dx * toPage.x,
+      positionY: position.dy * toPage.y,
+      width: _baseItemSize * toPage.x,
+      height: _baseItemSize * toPage.y,
       rotation: 0.0,
     );
   }
@@ -738,10 +770,23 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final canvasSize = Size(
-                  constraints.maxWidth,
-                  constraints.maxHeight,
-                );
+                final pageWidth = (currentPage?.canvasWidth ?? 1080).toDouble();
+                final pageHeight = (currentPage?.canvasHeight ?? 1920)
+                    .toDouble();
+                final pageAspect = pageWidth / pageHeight;
+                final availableWidth = constraints.maxWidth;
+                final availableHeight = constraints.maxHeight;
+
+                var canvasWidth = availableWidth;
+                var canvasHeight = canvasWidth / pageAspect;
+                if (canvasHeight > availableHeight) {
+                  canvasHeight = availableHeight;
+                  canvasWidth = canvasHeight * pageAspect;
+                }
+
+                final canvasSize = Size(canvasWidth, canvasHeight);
+                final canvasLeft = (availableWidth - canvasWidth) / 2;
+                final canvasTop = (availableHeight - canvasHeight) / 2;
                 final imageLookup = {
                   for (final item in itemsProvider.items)
                     item.id: (item.processedImageUrl ?? item.originalImageUrl),
@@ -756,34 +801,49 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
 
                 return Stack(
                   children: [
-                    Container(
-                      key: _canvasKey,
-                      decoration: BoxDecoration(
-                        color: currentPage != null
-                            ? _colorFromHex(currentPage.backgroundColor)
-                            : _activeTemplate.backgroundColor,
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusLarge,
+                    Positioned(
+                      left: canvasLeft,
+                      top: canvasTop,
+                      child: SizedBox(
+                        width: canvasSize.width,
+                        height: canvasSize.height,
+                        child: Container(
+                          key: _canvasKey,
+                          decoration: BoxDecoration(
+                            color: currentPage != null
+                                ? _colorFromHex(currentPage.backgroundColor)
+                                : _activeTemplate.backgroundColor,
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusLarge,
+                            ),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: CustomPaint(
+                            painter: _activeTemplate.painter,
+                            child: const SizedBox.expand(),
+                          ),
                         ),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: CustomPaint(
-                        painter: _activeTemplate.painter,
-                        child: const SizedBox.expand(),
                       ),
                     ),
                     if (pageEditor.isLoading)
                       const Center(child: CircularProgressIndicator()),
                     ...pageEditor.pageItems.map((item) {
+                      final page = pageEditor.currentPage;
+                      final toCanvas = page == null
+                          ? (x: 1.0, y: 1.0)
+                          : _pageToCanvasScale(
+                              canvasSize: canvasSize,
+                              page: page,
+                            );
                       final imageUrl = imageLookup[item.itemId];
-                      final width = item.width;
-                      final height = item.height;
+                      final width = item.width * toCanvas.x;
+                      final height = item.height * toCanvas.y;
                       final status = statusLookup[item.itemId] ?? 'unknown';
                       final itemData = itemLookup[item.itemId];
                       final isProcessing = status != 'completed';
                       return Positioned(
-                        left: item.positionX,
-                        top: item.positionY,
+                        left: canvasLeft + (item.positionX * toCanvas.x),
+                        top: canvasTop + (item.positionY * toCanvas.y),
                         child: GestureDetector(
                           onScaleStart: isProcessing
                               ? null
@@ -797,11 +857,11 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                                     details.focalPoint,
                                   );
                                   _itemStart = Offset(
-                                    item.positionX,
-                                    item.positionY,
+                                    item.positionX * toCanvas.x,
+                                    item.positionY * toCanvas.y,
                                   );
-                                  _widthStart = item.width;
-                                  _heightStart = item.height;
+                                  _widthStart = item.width * toCanvas.x;
+                                  _heightStart = item.height * toCanvas.y;
                                   _rotationStart = item.rotation;
                                 },
                           onScaleUpdate: isProcessing
@@ -833,12 +893,20 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                                     nextHeight,
                                   );
 
+                                  final page = pageEditor.currentPage;
+                                  final toPage = page == null
+                                      ? (x: 1.0, y: 1.0)
+                                      : _canvasToPageScale(
+                                          canvasSize: canvasSize,
+                                          page: page,
+                                        );
+
                                   pageEditor.setItemTransform(
                                     pageItemId: item.id,
-                                    positionX: nextOffset.dx,
-                                    positionY: nextOffset.dy,
-                                    width: nextWidth,
-                                    height: nextHeight,
+                                    positionX: nextOffset.dx * toPage.x,
+                                    positionY: nextOffset.dy * toPage.y,
+                                    width: nextWidth * toPage.x,
+                                    height: nextHeight * toPage.y,
                                     rotation: _rotationStart + details.rotation,
                                   );
                                 },
@@ -1079,8 +1147,8 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                       );
                     }),
                     Positioned(
-                      right: AppTheme.spacing16,
-                      bottom: AppTheme.spacing16,
+                      right: canvasLeft + AppTheme.spacing16,
+                      bottom: canvasTop + AppTheme.spacing16,
                       child: FloatingActionButton.extended(
                         onPressed: currentPage == null
                             ? null
