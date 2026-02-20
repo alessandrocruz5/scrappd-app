@@ -15,6 +15,7 @@ import '../../providers/page_editor_provider.dart';
 import '../../providers/projects_provider.dart';
 import '../../../data/services/page_export_service.dart';
 import '../../../domain/entities/page.dart' as page_entity;
+import '../../../domain/entities/page_item.dart';
 
 class PageEditorScreen extends StatefulWidget {
   const PageEditorScreen({super.key});
@@ -37,6 +38,9 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
   double _heightStart = _baseItemSize;
   double _rotationStart = 0.0;
   bool _isExporting = false;
+  bool _isMigratingLegacyLayout = false;
+  String? _legacyMigrationCandidatePageId;
+  final Set<String> _legacyCheckedPageIds = {};
 
   ({double x, double y}) _canvasToPageScale({
     required Size canvasSize,
@@ -62,6 +66,92 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
       x: canvasSize.width / page.canvasWidth,
       y: canvasSize.height / page.canvasHeight,
     );
+  }
+
+  bool _isLikelyLegacyLayout({
+    required List<PageItem> items,
+    required page_entity.Page page,
+    required Size canvasSize,
+  }) {
+    if (items.isEmpty || canvasSize.width <= 0 || canvasSize.height <= 0) {
+      return false;
+    }
+
+    // Legacy coordinates were saved in viewport space, so item bounds tend to
+    // fit inside the on-screen canvas instead of page pixel dimensions.
+    var maxX = 0.0;
+    var maxY = 0.0;
+    for (final item in items) {
+      maxX = math.max(maxX, item.positionX + item.width);
+      maxY = math.max(maxY, item.positionY + item.height);
+    }
+
+    final fitsViewport =
+        maxX <= (canvasSize.width * 1.05) && maxY <= (canvasSize.height * 1.05);
+    final pageMuchLarger =
+        page.canvasWidth > (canvasSize.width * 1.35) &&
+        page.canvasHeight > (canvasSize.height * 1.35);
+
+    return fitsViewport && pageMuchLarger;
+  }
+
+  Future<void> _migrateLegacyLayout({
+    required page_entity.Page page,
+    required PageEditorProvider pageEditor,
+    required Size canvasSize,
+  }) async {
+    if (_isMigratingLegacyLayout) return;
+
+    setState(() {
+      _isMigratingLegacyLayout = true;
+    });
+
+    try {
+      final toPage = _canvasToPageScale(canvasSize: canvasSize, page: page);
+      final currentItems = List<PageItem>.from(pageEditor.pageItems);
+
+      for (final item in currentItems) {
+        pageEditor.setItemTransform(
+          pageItemId: item.id,
+          positionX: item.positionX * toPage.x,
+          positionY: item.positionY * toPage.y,
+          width: item.width * toPage.x,
+          height: item.height * toPage.y,
+          rotation: item.rotation,
+        );
+      }
+
+      for (final item in currentItems) {
+        await pageEditor.persistItemTransform(pageItemId: item.id);
+      }
+
+      if (mounted) {
+        setState(() {
+          _legacyMigrationCandidatePageId = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Legacy layout migrated for accurate export.'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Migration failed: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMigratingLegacyLayout = false;
+        });
+      }
+    }
   }
 
   Future<bool> _confirmAction({
@@ -799,6 +889,24 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                   for (final item in itemsProvider.items) item.id: item,
                 };
 
+                if (currentPage != null &&
+                    !_legacyCheckedPageIds.contains(currentPage.id)) {
+                  _legacyCheckedPageIds.add(currentPage.id);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    final shouldMigrate = _isLikelyLegacyLayout(
+                      items: pageEditor.pageItems,
+                      page: currentPage,
+                      canvasSize: canvasSize,
+                    );
+                    if (shouldMigrate) {
+                      setState(() {
+                        _legacyMigrationCandidatePageId = currentPage.id;
+                      });
+                    }
+                  });
+                }
+
                 return Stack(
                   children: [
                     Positioned(
@@ -827,6 +935,63 @@ class _PageEditorScreenState extends State<PageEditorScreen> {
                     ),
                     if (pageEditor.isLoading)
                       const Center(child: CircularProgressIndicator()),
+                    if (currentPage != null &&
+                        _legacyMigrationCandidatePageId == currentPage.id)
+                      Positioned(
+                        left: canvasLeft + AppTheme.spacing12,
+                        top: canvasTop + AppTheme.spacing12,
+                        right: canvasLeft + AppTheme.spacing12,
+                        child: Material(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMedium,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppTheme.spacing12),
+                            child: Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'This page uses legacy layout coordinates. '
+                                    'Migrate now to make exports match editor.',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: _isMigratingLegacyLayout
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _legacyMigrationCandidatePageId =
+                                                null;
+                                          });
+                                        },
+                                  child: const Text('Dismiss'),
+                                ),
+                                const SizedBox(width: 6),
+                                ElevatedButton(
+                                  onPressed: _isMigratingLegacyLayout
+                                      ? null
+                                      : () => _migrateLegacyLayout(
+                                          page: currentPage,
+                                          pageEditor: pageEditor,
+                                          canvasSize: canvasSize,
+                                        ),
+                                  child: _isMigratingLegacyLayout
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text('Migrate'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ...pageEditor.pageItems.map((item) {
                       final page = pageEditor.currentPage;
                       final toCanvas = page == null
