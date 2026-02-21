@@ -89,6 +89,13 @@ class AuthInterceptor extends Interceptor {
         _refreshCompleter = null;
         return newAccessToken;
       }
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 401 || statusCode == 403) {
+        await _tokenStorage.clearTokens();
+      }
+      _refreshCompleter?.complete(null);
+      _refreshCompleter = null;
     } catch (_) {
       _refreshCompleter?.complete(null);
       _refreshCompleter = null;

@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../../core/network/error_helpers.dart';
+import '../../core/storage/token_storage.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../core/network/error_helpers.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthProvider extends ChangeNotifier {
-  AuthProvider(this._authRepository);
+  AuthProvider(this._authRepository, this._tokenStorage) {
+    _tokenStorage.addListener(_handleTokenChange);
+  }
 
   final AuthRepository _authRepository;
+  final TokenStorage _tokenStorage;
 
   AuthStatus _status = AuthStatus.unknown;
   User? _user;
@@ -36,6 +40,7 @@ class AuthProvider extends ChangeNotifier {
       _user = await _authRepository.getMe();
       _status = AuthStatus.authenticated;
     } catch (_) {
+      await _tokenStorage.clearTokens();
       _status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);
@@ -115,5 +120,20 @@ class AuthProvider extends ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  void _handleTokenChange() {
+    final hasAccessToken = _tokenStorage.accessToken?.isNotEmpty ?? false;
+    if (!hasAccessToken && _status != AuthStatus.unauthenticated) {
+      _user = null;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _tokenStorage.removeListener(_handleTokenChange);
+    super.dispose();
   }
 }

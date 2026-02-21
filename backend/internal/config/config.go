@@ -137,8 +137,8 @@ func Load() (*Config, error) {
 		JWT: JWTConfig{
 			AccessTokenSecret:  getEnv("JWT_ACCESS_SECRET", "your-secret-key-change-in-production"),
 			RefreshTokenSecret: getEnv("JWT_REFRESH_SECRET", "your-refresh-secret-change-in-production"),
-			AccessTokenExpiry:  getDurationEnv("JWT_ACCESS_EXPIRY", 15*time.Minute),
-			RefreshTokenExpiry: getDurationEnv("JWT_REFRESH_EXPIRY", 7*24*time.Hour),
+			AccessTokenExpiry:  getDurationEnv("JWT_ACCESS_EXPIRY", 5*24*time.Hour),
+			RefreshTokenExpiry: getDurationEnv("JWT_REFRESH_EXPIRY", 10*24*time.Hour),
 			VerifyTokenSecret:  getEnv("JWT_VERIFY_SECRET", "your-verify-secret-change-in-production"),
 			VerifyTokenExpiry:  getDurationEnv("JWT_VERIFY_EXPIRY", 24*time.Hour),
 		},

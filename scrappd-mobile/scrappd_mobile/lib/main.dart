@@ -89,7 +89,7 @@ class ScrappdApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Core services
-        Provider<TokenStorage>.value(value: tokenStorage),
+        ChangeNotifierProvider<TokenStorage>.value(value: tokenStorage),
         Provider<ApiClient>.value(value: apiClient),
         Provider<PageExportService>(
           create: (context) => PageExportService(
@@ -108,7 +108,10 @@ class ScrappdApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider<AuthProvider>(
-          create: (context) => AuthProvider(context.read<AuthRepositoryImpl>()),
+          create: (context) => AuthProvider(
+            context.read<AuthRepositoryImpl>(),
+            context.read<TokenStorage>(),
+          ),
         ),
 
         // Projects

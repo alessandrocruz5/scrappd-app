@@ -265,8 +265,8 @@ generate-secrets-update: ## Generate and update .env file automatically
 		echo "# JWT Secrets" >> .env; \
 		echo "JWT_ACCESS_SECRET=$$ACCESS_SECRET" >> .env; \
 		echo "JWT_REFRESH_SECRET=$$REFRESH_SECRET" >> .env; \
-		echo "JWT_ACCESS_EXPIRY=15m" >> .env; \
-		echo "JWT_REFRESH_EXPIRY=168h" >> .env; \
+		echo "JWT_ACCESS_EXPIRY=120h" >> .env; \
+		echo "JWT_REFRESH_EXPIRY=240h" >> .env; \
 		echo "✅ Added JWT secrets to .env"; \
 	fi
 
