@@ -40,6 +40,14 @@
         {
           "photosPermission": "Scrappd needs access to your photos so you can turn one into a shaped cutout."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Scrappd needs access to your photos so it can save your exported pages.",
+          "savePhotosPermission": "Scrappd saves your exported pages to your photo library.",
+          "isAccessMediaLocationEnabled": false
+        }
       ]
     ],
     "experiments": {

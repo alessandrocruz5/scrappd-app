@@ -7,7 +7,7 @@
 // content.pages through Supabase, so the layout survives a reload.
 
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -33,6 +33,7 @@ import { FormError } from '@/components/ui';
 import { colors, radius, spacing } from '@/theme/colors';
 
 import { CanvasItem } from './canvas-item';
+import { exportPageView } from './export-page';
 import { ItemToolbar } from './item-toolbar';
 import { PageBackground } from './page-background';
 import {
@@ -54,6 +55,10 @@ export function PageEditor({ pageId }: { pageId: string }) {
   const [canvas, setCanvas] = useState({ width: 0, height: 0 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // The composed page view we snapshot on export (Skia background + cutouts).
+  const pageRef = useRef<View>(null);
 
   const pattern: PatternId = isPatternId(page?.background_pattern)
     ? page.background_pattern
@@ -121,6 +126,50 @@ export function PageEditor({ pageId }: { pageId: string }) {
     removeItem.mutate(id);
   }
 
+  async function handleExport() {
+    if (exporting || !page) return;
+    // Drop the selection so its highlight border isn't baked into the PNG.
+    setSelectedId(null);
+    setExporting(true);
+    try {
+      // Wait a frame for the deselect (and any pending layout) to paint.
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => resolve(null)),
+      );
+      // Export at the page's design resolution; fall back to a 2× snapshot of
+      // the on-screen canvas when the stored dimensions are missing.
+      const width =
+        page.canvas_width > 0
+          ? page.canvas_width
+          : Math.round(canvas.width * 2);
+      const height =
+        page.canvas_height > 0
+          ? page.canvas_height
+          : Math.round(canvas.height * 2);
+
+      const result = await exportPageView(pageRef, {
+        width,
+        height,
+        fileName: `scrappd-page-${pageId}`,
+      });
+
+      const parts: string[] = [];
+      if (result.savedToLibrary) parts.push('Saved to your photo library.');
+      if (result.shared) parts.push('Opened the share sheet.');
+      Alert.alert(
+        'Page exported',
+        parts.length > 0 ? parts.join('\n') : 'Your high-res page PNG is ready.',
+      );
+    } catch (e) {
+      Alert.alert(
+        'Export failed',
+        e instanceof Error ? e.message : 'Could not export this page.',
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (pageLoading) {
     return (
       <View style={styles.centered}>
@@ -141,6 +190,29 @@ export function PageEditor({ pageId }: { pageId: string }) {
 
   return (
     <View style={styles.container}>
+      {/* Export */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.exportButton}
+          activeOpacity={0.85}
+          onPress={handleExport}
+          disabled={exporting}
+        >
+          {exporting ? (
+            <ActivityIndicator color={colors.primary} size="small" />
+          ) : (
+            <Ionicons
+              name="share-outline"
+              size={18}
+              color={colors.primary}
+            />
+          )}
+          <Text style={styles.exportButtonText}>
+            {exporting ? 'Exporting…' : 'Export'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Templates */}
       <Text style={styles.sectionLabel}>Templates</Text>
       <ScrollView
@@ -195,6 +267,8 @@ export function PageEditor({ pageId }: { pageId: string }) {
       {/* Canvas */}
       <View style={styles.canvasWrap}>
         <View
+          ref={pageRef}
+          collapsable={false}
           style={[styles.canvas, { aspectRatio: aspect }]}
           onLayout={onCanvasLayout}
         >
@@ -279,6 +353,28 @@ export function PageEditor({ pageId }: { pageId: string }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  exportButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   noticeWrap: { padding: spacing.lg },
   sectionLabel: {
     fontSize: 13,

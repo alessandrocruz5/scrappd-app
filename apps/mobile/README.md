@@ -48,9 +48,22 @@ src/
   lib/query-client.ts  React Query client
   lib/env.ts           Validated EXPO_PUBLIC_* config
   stores/auth-store.ts zustand auth store (mirrors the old Flutter AuthProvider)
+  cropper/             Instant shape cropper (Skia, client-side)
+  editor/              Skia page editor + client-side export (export-page.ts)
+  books/               Books / Pages / Items data + UI
   components/          Shared UI (buttons, fields, splash)
   theme/colors.ts      Brand palette carried over from the Flutter app
 ```
+
+## Page export
+
+Pages are exported entirely on-device — there is no server render endpoint. The
+editor snapshots the composed page view (the Skia background plus the cutout
+overlays) to a high-res PNG with `react-native-view-shot`, then saves it to the
+photo library (`expo-media-library`) and offers the system share sheet
+(`expo-sharing`). This is the React Native port of the old
+`page_export_service.dart`, which downloaded a server-rendered image. See
+`src/editor/export-page.ts`.
 
 ## Auth flow
 

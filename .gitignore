@@ -60,8 +60,7 @@ scrappd-ml-experiments/test_images/
 scrappd-ml-experiments/test_results_*
 apps/ml-service/test_output.png
 
-# Local binaries and images
-backend/main
+# Local images / artifacts
 result.png
 result2.png
 

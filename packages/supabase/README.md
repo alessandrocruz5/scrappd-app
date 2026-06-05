@@ -7,7 +7,10 @@ migrations, and edge functions.
 
 - `config.toml` — Supabase CLI configuration for the local stack.
 - `migrations/` — SQL migrations applied with `supabase db push` / `supabase db reset`.
-- `functions/` — Supabase Edge Functions (Deno).
+- `functions/` — Supabase Edge Functions (Deno). Currently just
+  `remove-background`, a **dormant premium placeholder** that gates on
+  `profiles.subscription_tier` and will later call the Python ML service
+  (`apps/ml-service`). See `functions/remove-background/README.md`.
 - `tests/` — SQL verification scripts (e.g. RLS checks with two users).
 
 ## Schema
@@ -59,6 +62,7 @@ pnpm --filter @scrappd/supabase exec supabase <command>
 
 ## Notes
 
-The Supabase CLI requires Docker to be running for `supabase start`. If the
-legacy Go `docker-compose.yml` services bind conflicting ports, stop them
-before starting the Supabase stack.
+The Supabase CLI requires Docker to be running for `supabase start`. It manages
+its own containers — the repo's `docker-compose.yml` now only holds the dormant
+ML service (behind the `ml` profile), so there are no port conflicts with the
+Supabase stack.
