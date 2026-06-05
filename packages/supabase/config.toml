@@ -105,3 +105,10 @@ enabled = true
 # Configure the request idle timeout for edge functions.
 policy = "oneshot"
 inspector_port = 8083
+
+# Dormant premium placeholder for AI background removal. The function checks the
+# caller's subscription tier itself, but enforcing the JWT here rejects
+# unauthenticated requests before the function body even runs.
+[functions.remove-background]
+enabled = true
+verify_jwt = true

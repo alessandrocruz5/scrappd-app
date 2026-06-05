@@ -1,48 +1,22 @@
-version: '3.8'
+# Local Docker services for Scrappd.
+#
+# The Go backend and its bespoke Postgres/Redis/pgAdmin stack are retired —
+# auth, data, and storage now live in Supabase. Run the local Supabase stack
+# with `pnpm db:start` (the Supabase CLI manages its own Docker containers);
+# this file does NOT duplicate them.
+#
+# The only service here is the DORMANT Python ML background-removal service
+# (BiRefNet), kept for the future premium tier and invoked later via the
+# `remove-background` Supabase Edge Function. It is not part of the default
+# flow, so it lives behind the `ml` profile and does not start by default.
+#
+#   docker compose --profile ml up        # start the dormant ML service
+#   pnpm db:start                          # start Supabase (separate)
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: scrappd-postgres
-    environment:
-      POSTGRES_DB: scrappd
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d scrappd"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - scrappd-network
-
-  # Redis (for future caching/sessions)
-  redis:
-    image: redis:7-alpine
-    container_name: scrappd-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - scrappd-network
-
-  # ML Service (Background Removal)
-  scrappd-ml-service:
+  ml-service:
     build:
-      context: ./scrappd-ml-service
+      context: ./apps/ml-service
       dockerfile: Dockerfile
     container_name: scrappd-ml
     ports:
@@ -51,53 +25,5 @@ services:
       - SERVICE_NAME=Scrappd ML Service
       - MODEL_NAME=birefnet-general
       - DEBUG=false
-    volumes:
-      - ./scrappd-ml-service:/app
-    networks:
-      - scrappd-network
-
-  # pgAdmin (Optional - Database GUI)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: scrappd-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@scrappd.local
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      - postgres
-    networks:
-      - scrappd-network
     profiles:
-      - tools
-
-  # Redis Commander (Optional - Redis GUI)
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: scrappd-redis-commander
-    environment:
-      - REDIS_HOSTS=local:redis:6379
-    ports:
-      - "8081:8081"
-    depends_on:
-      - redis
-    networks:
-      - scrappd-network
-    profiles:
-      - tools
-
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  pgadmin_data:
-    driver: local
-
-networks:
-  scrappd-network:
-    driver: bridge
+      - ml
