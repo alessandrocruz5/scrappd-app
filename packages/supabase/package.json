@@ -8,7 +8,7 @@
     "db:stop": "supabase stop",
     "db:push": "supabase db push",
     "db": "supabase start",
-    "gen:types": "supabase gen types typescript --local > ../shared-types/src/database.types.ts",
+    "gen:types": "supabase gen types typescript --local --schema public,content > ../shared-types/src/database.types.ts",
     "lint": "echo \"(no lint configured for supabase package)\""
   },
   "devDependencies": {
