@@ -1,0 +1,12 @@
+{
+  "name": "@scrappd/ml-service",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Background removal FastAPI service (BiRefNet). Real build is driven by requirements.txt + Makefile; these scripts are thin shims for Turborepo.",
+  "scripts": {
+    "dev": "make dev",
+    "build": "make install",
+    "lint": "make help",
+    "test": "make test"
+  }
+}

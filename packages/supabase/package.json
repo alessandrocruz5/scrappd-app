@@ -1,0 +1,17 @@
+{
+  "name": "@scrappd/supabase",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Supabase CLI project: local stack, migrations, and edge functions.",
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:push": "supabase db push",
+    "db": "supabase start",
+    "gen:types": "supabase gen types typescript --local > ../shared-types/src/database.types.ts",
+    "lint": "echo \"(no lint configured for supabase package)\""
+  },
+  "devDependencies": {
+    "supabase": "^2.20.5"
+  }
+}
