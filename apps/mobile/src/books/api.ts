@@ -85,6 +85,43 @@ export async function deleteBook(id: string): Promise<void> {
 // Pages
 // ---------------------------------------------------------------------------
 
+export async function getPage(pageId: string): Promise<Page> {
+  const { data, error } = await content()
+    .from('pages')
+    .select('*')
+    .eq('id', pageId)
+    .single();
+  if (error || !data) fail(error, 'Failed to load page.');
+  return data;
+}
+
+// Patch a page's canvas chrome — background colour/image/pattern and the
+// layout template marker. Used by the editor's template + background controls.
+export type PagePatch = Partial<
+  Pick<
+    Page,
+    | 'title'
+    | 'background_color'
+    | 'background_image_url'
+    | 'background_pattern'
+    | 'layout_template'
+  >
+>;
+
+export async function updatePage(
+  pageId: string,
+  patch: PagePatch,
+): Promise<Page> {
+  const { data, error } = await content()
+    .from('pages')
+    .update(patch)
+    .eq('id', pageId)
+    .select('*')
+    .single();
+  if (error || !data) fail(error, 'Failed to update page.');
+  return data;
+}
+
 export async function listPages(bookId: string): Promise<Page[]> {
   const { data, error } = await content()
     .from('pages')
@@ -202,4 +239,43 @@ export async function addItemToPage(
     .single();
   if (error || !data) fail(error, 'Failed to add item to page.');
   return data;
+}
+
+// The editor persists drag/resize/rotate (and the opacity / z-index controls)
+// straight onto the page_items row. The updated_at trigger keeps the timestamp
+// fresh; everything else is whatever subset of the transform changed.
+export type PageItemPatch = Partial<
+  Pick<
+    PageItem,
+    | 'position_x'
+    | 'position_y'
+    | 'width'
+    | 'height'
+    | 'rotation'
+    | 'z_index'
+    | 'opacity'
+    | 'filters'
+  >
+>;
+
+export async function updatePageItem(
+  pageItemId: string,
+  patch: PageItemPatch,
+): Promise<PageItem> {
+  const { data, error } = await content()
+    .from('page_items')
+    .update(patch)
+    .eq('id', pageItemId)
+    .select('*')
+    .single();
+  if (error || !data) fail(error, 'Failed to update item.');
+  return data;
+}
+
+export async function deletePageItem(pageItemId: string): Promise<void> {
+  const { error } = await content()
+    .from('page_items')
+    .delete()
+    .eq('id', pageItemId);
+  if (error) fail(error, 'Failed to remove item.');
 }
