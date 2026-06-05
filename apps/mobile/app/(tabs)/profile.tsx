@@ -24,11 +24,7 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.actions}>
-        <AppButton
-          label="Log out"
-          onPress={signOut}
-          loading={isSubmitting}
-        />
+        <AppButton label="Log out" onPress={signOut} loading={isSubmitting} />
       </View>
     </View>
   );

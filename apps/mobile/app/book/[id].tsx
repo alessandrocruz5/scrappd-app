@@ -35,8 +35,14 @@ export default function BookPagesScreen() {
   const { data: books } = useBooks();
   const book = books?.find((b) => b.id === bookId);
 
-  const { data: pages, isLoading, isError, error, refetch, isRefetching } =
-    usePages(bookId);
+  const {
+    data: pages,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = usePages(bookId);
 
   const createPage = useCreatePage(bookId);
   const deletePage = useDeletePage(bookId);
@@ -95,7 +101,9 @@ export default function BookPagesScreen() {
       {isError ? (
         <View style={styles.errorWrap}>
           <FormError
-            message={error instanceof Error ? error.message : 'Failed to load pages.'}
+            message={
+              error instanceof Error ? error.message : 'Failed to load pages.'
+            }
           />
         </View>
       ) : null}
@@ -130,7 +138,10 @@ export default function BookPagesScreen() {
               </View>
               <View style={styles.tileFooter}>
                 <Text style={styles.tileLabel}>Page {item.page_number}</Text>
-                <TouchableOpacity hitSlop={10} onPress={() => pageOptions(item)}>
+                <TouchableOpacity
+                  hitSlop={10}
+                  onPress={() => pageOptions(item)}
+                >
                   <Ionicons
                     name="ellipsis-horizontal"
                     size={18}

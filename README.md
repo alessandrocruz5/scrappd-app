@@ -69,14 +69,14 @@ for the dormant ML service.
 
 ## Common scripts (repo root)
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Run `dev` across workspaces (Turborepo) |
-| `pnpm lint` | Lint all workspaces |
-| `pnpm typecheck` | Type-check all workspaces |
-| `pnpm build` | Build all workspaces |
-| `pnpm db:start` | Start the local Supabase stack |
-| `pnpm db:push` | Apply migrations to the linked Supabase project |
+| Command          | Description                                          |
+| ---------------- | ---------------------------------------------------- |
+| `pnpm dev`       | Run `dev` across workspaces (Turborepo)              |
+| `pnpm lint`      | Lint all workspaces                                  |
+| `pnpm typecheck` | Type-check all workspaces                            |
+| `pnpm build`     | Build all workspaces                                 |
+| `pnpm db:start`  | Start the local Supabase stack                       |
+| `pnpm db:push`   | Apply migrations to the linked Supabase project      |
 | `pnpm gen:types` | Regenerate `packages/shared-types` from the database |
 
 ## Dormant ML service

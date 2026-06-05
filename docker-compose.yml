@@ -20,7 +20,7 @@ services:
       dockerfile: Dockerfile
     container_name: scrappd-ml
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       - SERVICE_NAME=Scrappd ML Service
       - MODEL_NAME=birefnet-general

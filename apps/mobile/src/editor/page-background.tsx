@@ -23,11 +23,7 @@ const GRID_STEP = 48;
 const DOT_STEP = 40;
 const DOT_RADIUS = 2;
 
-function buildPatternPath(
-  pattern: PatternId,
-  width: number,
-  height: number,
-) {
+function buildPatternPath(pattern: PatternId, width: number, height: number) {
   const path = Skia.Path.Make();
   if (width <= 0 || height <= 0) return path;
 

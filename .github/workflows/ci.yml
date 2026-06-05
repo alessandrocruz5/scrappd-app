@@ -37,6 +37,90 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+  # Run the Jest suite for the Expo app and publish the coverage report.
+  test:
+    name: Unit tests (Jest + coverage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Test with coverage
+        run: pnpm --filter mobile run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-coverage
+          path: apps/mobile/coverage
+          if-no-files-found: warn
+
+  # Fail the PR if anything isn't formatted to the repo's Prettier style.
+  format:
+    name: Prettier format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+  # Catch web bundling breakages by running a full Expo web export. Dummy
+  # Supabase env vars satisfy env.ts validation during the export.
+  web-build:
+    name: Expo web build
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci-bundle-only
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Export web bundle
+        run: pnpm --filter mobile exec expo export --platform web
+
   # The Python ML service is dormant; just make sure it still imports/compiles.
   ml-service:
     name: ML service (dormant) sanity check

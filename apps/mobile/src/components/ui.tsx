@@ -41,7 +41,9 @@ export function AppButton({
       {loading ? (
         <ActivityIndicator color={isPrimary ? colors.white : colors.primary} />
       ) : (
-        <Text style={isPrimary ? styles.primaryButtonText : styles.textButtonText}>
+        <Text
+          style={isPrimary ? styles.primaryButtonText : styles.textButtonText}
+        >
           {label}
         </Text>
       )}
@@ -78,7 +80,11 @@ export function FormError({ message }: { message: string }) {
 export function FormNotice({ message }: { message: string }) {
   return (
     <View style={styles.noticeBox}>
-      <Ionicons name="information-circle-outline" size={18} color={colors.secondary} />
+      <Ionicons
+        name="information-circle-outline"
+        size={18}
+        color={colors.secondary}
+      />
       <Text style={styles.noticeText}>{message}</Text>
     </View>
   );

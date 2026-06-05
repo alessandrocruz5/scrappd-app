@@ -46,7 +46,11 @@ export function CutoutThumb({
   }
 
   return (
-    <Image source={{ uri: url }} style={[styles.image, imageStyle]} resizeMode="contain" />
+    <Image
+      source={{ uri: url }}
+      style={[styles.image, imageStyle]}
+      resizeMode="contain"
+    />
   );
 }
 

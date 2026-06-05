@@ -153,7 +153,11 @@ export function CanvasItem({
         ]}
       >
         {url ? (
-          <Image source={{ uri: url }} style={styles.image} resizeMode="contain" />
+          <Image
+            source={{ uri: url }}
+            style={styles.image}
+            resizeMode="contain"
+          />
         ) : (
           <View style={styles.placeholder} />
         )}
