@@ -45,11 +45,20 @@ venv/
 __pycache__/
 *.pyc
 
+# Node / monorepo
+node_modules/
+.turbo/
+*.tsbuildinfo
+
+# Supabase CLI local artifacts
+packages/supabase/.branches/
+packages/supabase/.temp/
+
 # ML experiments/artifacts
 scrappd-ml-experiments/output/
 scrappd-ml-experiments/test_images/
 scrappd-ml-experiments/test_results_*
-scrappd-ml-service/test_output.png
+apps/ml-service/test_output.png
 
 # Local binaries and images
 backend/main
