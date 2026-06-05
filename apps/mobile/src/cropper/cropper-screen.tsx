@@ -97,8 +97,8 @@ export function CropperScreen() {
         <Ionicons name="camera-outline" size={56} color={colors.accent} />
         <Text style={styles.permissionTitle}>Camera access needed</Text>
         <Text style={styles.permissionText}>
-          Scrappd uses the camera so you can aim a shape at a pattern and snap an
-          instant cutout.
+          Scrappd uses the camera so you can aim a shape at a pattern and snap
+          an instant cutout.
         </Text>
         <View style={styles.permissionActions}>
           <AppButton label="Allow camera" onPress={requestPermission} />
@@ -125,7 +125,11 @@ export function CropperScreen() {
             />
           </View>
           <View style={styles.savedBadge}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={colors.success}
+            />
             <Text style={styles.savedText}>Cutout saved to your items</Text>
           </View>
         </View>
@@ -140,7 +144,11 @@ export function CropperScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={[styles.viewport, { width: viewport, height: viewport }]}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+        />
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <ShapeOverlay shape={shape} size={viewport} />
         </View>
@@ -160,7 +168,11 @@ export function CropperScreen() {
 
       {error ? (
         <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={18} color={colors.error} />
+          <Ionicons
+            name="alert-circle-outline"
+            size={18}
+            color={colors.error}
+          />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
@@ -172,7 +184,11 @@ export function CropperScreen() {
           style={styles.sideButton}
           activeOpacity={0.8}
         >
-          <Ionicons name="images-outline" size={26} color={colors.textSecondary} />
+          <Ionicons
+            name="images-outline"
+            size={26}
+            color={colors.textSecondary}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity

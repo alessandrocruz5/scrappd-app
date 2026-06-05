@@ -16,6 +16,9 @@
     "typecheck": {
       "dependsOn": ["^build"]
     },
+    "test": {
+      "dependsOn": ["^build"]
+    },
     "db": {
       "cache": false,
       "persistent": true

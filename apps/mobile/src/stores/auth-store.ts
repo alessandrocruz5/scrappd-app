@@ -34,12 +34,15 @@ type AuthState = {
 
 // Translate raw Supabase auth errors into something a user can act on,
 // mirroring the Flutter app's mapErrorMessage helper.
-function friendlyAuthError(message: string, fallback: string): string {
+export function friendlyAuthError(message: string, fallback: string): string {
   const normalized = message.toLowerCase();
   if (normalized.includes('invalid login credentials')) {
     return 'Incorrect email or password.';
   }
-  if (normalized.includes('already registered') || normalized.includes('already exists')) {
+  if (
+    normalized.includes('already registered') ||
+    normalized.includes('already exists')
+  ) {
     return 'An account with this email already exists.';
   }
   if (normalized.includes('email not confirmed')) {
@@ -88,7 +91,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
     set({ isSubmitting: false });
     if (error) {
-      const message = friendlyAuthError(error.message, 'Login failed. Please try again.');
+      const message = friendlyAuthError(
+        error.message,
+        'Login failed. Please try again.',
+      );
       set({ errorMessage: message });
       return { ok: false, message };
     }
@@ -107,7 +113,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
     set({ isSubmitting: false });
     if (error) {
-      const message = friendlyAuthError(error.message, 'Registration failed. Please try again.');
+      const message = friendlyAuthError(
+        error.message,
+        'Registration failed. Please try again.',
+      );
       set({ errorMessage: message });
       return { ok: false, message };
     }
@@ -136,13 +145,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
     set({ isSubmitting: false });
     if (error) {
-      const message = friendlyAuthError(error.message, 'Could not send reset email.');
+      const message = friendlyAuthError(
+        error.message,
+        'Could not send reset email.',
+      );
       set({ errorMessage: message });
       return { ok: false, message };
     }
     return {
       ok: true,
-      message: 'If an account exists for that email, a reset link is on its way.',
+      message:
+        'If an account exists for that email, a reset link is on its way.',
     };
   },
 

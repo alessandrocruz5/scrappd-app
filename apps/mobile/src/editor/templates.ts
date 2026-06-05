@@ -35,8 +35,13 @@ export const BACKGROUND_SWATCHES: string[] = [
   '#1B0E03',
 ];
 
-export function isPatternId(value: string | null | undefined): value is PatternId {
+export function isPatternId(
+  value: string | null | undefined,
+): value is PatternId {
   return (
-    value === 'none' || value === 'grid' || value === 'dots' || value === 'split'
+    value === 'none' ||
+    value === 'grid' ||
+    value === 'dots' ||
+    value === 'split'
   );
 }

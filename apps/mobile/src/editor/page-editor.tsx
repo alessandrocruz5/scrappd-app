@@ -44,7 +44,12 @@ import {
 } from './templates';
 
 export function PageEditor({ pageId }: { pageId: string }) {
-  const { data: page, isLoading: pageLoading, isError, error } = usePage(pageId);
+  const {
+    data: page,
+    isLoading: pageLoading,
+    isError,
+    error,
+  } = usePage(pageId);
   const { data: pageItems, isLoading: itemsLoading } = usePageItems(pageId);
 
   const updatePage = useUpdatePage(pageId);
@@ -158,7 +163,9 @@ export function PageEditor({ pageId }: { pageId: string }) {
       if (result.shared) parts.push('Opened the share sheet.');
       Alert.alert(
         'Page exported',
-        parts.length > 0 ? parts.join('\n') : 'Your high-res page PNG is ready.',
+        parts.length > 0
+          ? parts.join('\n')
+          : 'Your high-res page PNG is ready.',
       );
     } catch (e) {
       Alert.alert(
@@ -182,7 +189,9 @@ export function PageEditor({ pageId }: { pageId: string }) {
     return (
       <View style={styles.noticeWrap}>
         <FormError
-          message={error instanceof Error ? error.message : 'Failed to load page.'}
+          message={
+            error instanceof Error ? error.message : 'Failed to load page.'
+          }
         />
       </View>
     );
@@ -201,11 +210,7 @@ export function PageEditor({ pageId }: { pageId: string }) {
           {exporting ? (
             <ActivityIndicator color={colors.primary} size="small" />
           ) : (
-            <Ionicons
-              name="share-outline"
-              size={18}
-              color={colors.primary}
-            />
+            <Ionicons name="share-outline" size={18} color={colors.primary} />
           )}
           <Text style={styles.exportButtonText}>
             {exporting ? 'Exporting…' : 'Export'}
@@ -302,9 +307,7 @@ export function PageEditor({ pageId }: { pageId: string }) {
                   stackIndex={index + 1}
                   selected={pi.id === selectedId}
                   onSelect={() => setSelectedId(pi.id)}
-                  onCommit={(patch) =>
-                    updateItem.mutate({ id: pi.id, patch })
-                  }
+                  onCommit={(patch) => updateItem.mutate({ id: pi.id, patch })}
                 />
               ))
             : null}
@@ -321,7 +324,8 @@ export function PageEditor({ pageId }: { pageId: string }) {
         />
       ) : (
         <Text style={styles.hint}>
-          Tap a cutout to select. Drag to move, pinch to resize, twist to rotate.
+          Tap a cutout to select. Drag to move, pinch to resize, twist to
+          rotate.
         </Text>
       )}
 

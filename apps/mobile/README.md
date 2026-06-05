@@ -28,12 +28,12 @@ This app replaces the retired Flutter app (`scrappd-mobile/`).
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `pnpm --filter mobile dev` | Start the Expo dev server |
-| `pnpm --filter mobile lint` | Lint with eslint-config-expo |
-| `pnpm --filter mobile typecheck` | Type-check with `tsc --noEmit` |
-| `pnpm --filter mobile build` | Export the JS bundle (`expo export`) |
+| Command                          | Description                          |
+| -------------------------------- | ------------------------------------ |
+| `pnpm --filter mobile dev`       | Start the Expo dev server            |
+| `pnpm --filter mobile lint`      | Lint with eslint-config-expo         |
+| `pnpm --filter mobile typecheck` | Type-check with `tsc --noEmit`       |
+| `pnpm --filter mobile build`     | Export the JS bundle (`expo export`) |
 
 ## Layout
 

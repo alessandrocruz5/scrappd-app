@@ -10,7 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppButton, AppTextField, FormError, FormNotice } from '@/components/ui';
+import {
+  AppButton,
+  AppTextField,
+  FormError,
+  FormNotice,
+} from '@/components/ui';
 import { useAuthStore } from '@/stores/auth-store';
 import { colors, spacing } from '@/theme/colors';
 
@@ -28,7 +33,9 @@ export default function RegisterScreen() {
     setLocalError(null);
     setNotice(null);
     if (!email.trim() || password.length < 8) {
-      setLocalError('Enter your email and a password of at least 8 characters.');
+      setLocalError(
+        'Enter your email and a password of at least 8 characters.',
+      );
       return;
     }
     const result = await signUp(email, password, displayName || undefined);
@@ -117,7 +124,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginTop: spacing.xxl,
   },
-  subtitle: { fontSize: 16, color: colors.textSecondary, marginTop: spacing.sm },
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
   form: { marginTop: spacing.xxl },
   footer: {
     flexDirection: 'row',

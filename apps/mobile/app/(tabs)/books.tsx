@@ -34,8 +34,14 @@ type DialogState =
 
 export default function BooksScreen() {
   const router = useRouter();
-  const { data: books, isLoading, isError, error, refetch, isRefetching } =
-    useBooks();
+  const {
+    data: books,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useBooks();
 
   const createBook = useCreateBook();
   const renameBook = useRenameBook();
@@ -107,7 +113,11 @@ export default function BooksScreen() {
     <View style={styles.container}>
       {isError ? (
         <View style={styles.errorWrap}>
-          <FormError message={error instanceof Error ? error.message : 'Failed to load books.'} />
+          <FormError
+            message={
+              error instanceof Error ? error.message : 'Failed to load books.'
+            }
+          />
         </View>
       ) : null}
 
