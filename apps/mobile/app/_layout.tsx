@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SplashScreen } from '@/components/splash-screen';
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/stores/auth-store';
+import { colors } from '@/theme/colors';
 
 // Routes the user between the auth stack and the tab shell based on session
 // state — the React Native equivalent of the Flutter root_screen.dart gate.
@@ -31,7 +32,25 @@ function AuthGate() {
     return <SplashScreen />;
   }
 
-  return <Slot />;
+  // A Stack at the root so the Books -> Pages -> editor flow pushes screens with
+  // native headers and back gestures. The tab shell and auth stack render their
+  // own headers, so they opt out here.
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.white,
+        headerTitleStyle: { fontWeight: '700' },
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="book/[id]" options={{ title: 'Book' }} />
+      <Stack.Screen name="page/[id]" options={{ title: 'Page' }} />
+    </Stack>
+  );
 }
 
 export default function RootLayout() {
