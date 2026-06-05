@@ -28,6 +28,18 @@
           "backgroundColor": "#510420",
           "resizeMode": "contain"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Scrappd uses the camera so you can aim a shape at a pattern or poster and snap an instant cutout."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Scrappd needs access to your photos so you can turn one into a shaped cutout."
+        }
       ]
     ],
     "experiments": {
