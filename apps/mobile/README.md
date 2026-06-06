@@ -28,13 +28,24 @@ This app replaces the retired Flutter app (`scrappd-mobile/`).
 
 ## Environment variables
 
-The app reads two **build-time** public vars (the `EXPO_PUBLIC_` prefix inlines
-them into the JS bundle); they are validated at startup in `src/lib/env.ts`:
+The app reads **build-time** public vars (the `EXPO_PUBLIC_` prefix inlines them
+into the JS bundle); they are read in `src/lib/env.ts`, which throws at startup
+if the required Supabase pair is missing:
 
-| Variable                        | Purpose                                  |
-| ------------------------------- | ---------------------------------------- |
-| `EXPO_PUBLIC_SUPABASE_URL`      | Supabase project API URL                 |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/publishable key (RLS-safe) |
+| Variable                        | Required | Purpose                                          |
+| ------------------------------- | -------- | ------------------------------------------------ |
+| `EXPO_PUBLIC_SUPABASE_URL`      | yes      | Supabase project API URL                         |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | yes      | Supabase anon/publishable key (RLS-safe)         |
+| `EXPO_PUBLIC_SENTRY_DSN`        | no       | Sentry DSN; enables crash reporting when present |
+
+Source maps for production builds also use three **secret**, build-time-only
+vars (read by the Sentry Metro/Expo plugin, **not** inlined into the bundle):
+
+| Variable            | Purpose                                             |
+| ------------------- | --------------------------------------------------- |
+| `SENTRY_ORG`        | Sentry org slug                                     |
+| `SENTRY_PROJECT`    | Sentry project slug                                 |
+| `SENTRY_AUTH_TOKEN` | Auth token used to upload source maps (keep secret) |
 
 How they are supplied per target:
 
@@ -89,6 +100,31 @@ photo library (`expo-media-library`) and offers the system share sheet
 (`expo-sharing`). This is the React Native port of the old
 `page_export_service.dart`, which downloaded a server-rendered image. See
 `src/editor/export-page.ts`.
+
+## Crash reporting (Sentry)
+
+Production observability runs through Sentry (`@sentry/react-native`), wired up
+in `src/lib/sentry.ts` and initialised once in `app/_layout.tsx`. It is
+**opt-in**: nothing is sent unless `EXPO_PUBLIC_SENTRY_DSN` is set, so local dev
+and Expo Go stay silent.
+
+- **Unhandled render errors** are caught by a root `Sentry.ErrorBoundary` in
+  `app/_layout.tsx`, which reports the crash and shows the friendly
+  `src/components/error-fallback.tsx` UI (with a "Try again" reset) instead of a
+  blank screen. The root component is wrapped with `Sentry.wrap` for navigation
+  and touch breadcrumbs.
+- **Handled errors** in the key flows are reported via `captureHandledError`
+  with a `feature` tag: cutout upload (`cropper.upload`), editor persistence
+  (`editor.persist.*`, the optimistic mutations that otherwise roll back
+  silently), and page export (`editor.export`).
+- **Source maps:** `metro.config.js` uses Sentry's `getSentryExpoConfig` and
+  `app.json` includes the `@sentry/react-native/expo` plugin, so production
+  web/native builds emit source maps and upload them when `SENTRY_AUTH_TOKEN` /
+  `SENTRY_ORG` / `SENTRY_PROJECT` are present (the upload is skipped otherwise).
+
+To verify end-to-end, run a build with a real DSN, trigger a test exception
+(e.g. throw in a button handler), and confirm it lands in the Sentry dashboard
+with readable (de-minified) stack frames.
 
 ## Auth flow
 

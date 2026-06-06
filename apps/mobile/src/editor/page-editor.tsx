@@ -30,6 +30,7 @@ import {
 } from '@/books/hooks';
 import { ItemPicker } from '@/books/item-picker';
 import { FormError } from '@/components/ui';
+import { captureHandledError } from '@/lib/sentry';
 import { colors, radius, spacing } from '@/theme/colors';
 
 import { CanvasItem } from './canvas-item';
@@ -168,6 +169,7 @@ export function PageEditor({ pageId }: { pageId: string }) {
           : 'Your high-res page PNG is ready.',
       );
     } catch (e) {
+      captureHandledError(e, { feature: 'editor.export', pageId });
       Alert.alert(
         'Export failed',
         e instanceof Error ? e.message : 'Could not export this page.',

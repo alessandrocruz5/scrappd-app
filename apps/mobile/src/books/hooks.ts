@@ -4,6 +4,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { captureHandledError } from '@/lib/sentry';
+
 import {
   addItemToPage,
   createBook,
@@ -101,8 +103,11 @@ export function useUpdatePage(pageId: string) {
       );
       return { prev };
     },
-    onError: (_e, _patch, ctx) => {
+    onError: (e, _patch, ctx) => {
       if (ctx?.prev) qc.setQueryData(booksKeys.page(pageId), ctx.prev);
+      // Persistence failed and was rolled back silently — report it so we see
+      // editor saves that aren't reaching Supabase.
+      captureHandledError(e, { feature: 'editor.persist.page', pageId });
     },
   });
 }
@@ -182,8 +187,9 @@ export function useUpdatePageItem(pageId: string) {
       );
       return { prev };
     },
-    onError: (_e, _vars, ctx) => {
+    onError: (e, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(booksKeys.pageItems(pageId), ctx.prev);
+      captureHandledError(e, { feature: 'editor.persist.pageItem', pageId });
     },
   });
 }
@@ -203,8 +209,12 @@ export function useRemovePageItem(pageId: string) {
       );
       return { prev };
     },
-    onError: (_e, _id, ctx) => {
+    onError: (e, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(booksKeys.pageItems(pageId), ctx.prev);
+      captureHandledError(e, {
+        feature: 'editor.persist.removePageItem',
+        pageId,
+      });
     },
     onSettled: () =>
       qc.invalidateQueries({ queryKey: booksKeys.pageItems(pageId) }),
