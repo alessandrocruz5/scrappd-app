@@ -1,1 +1,0 @@
- /home/apa/Documents/Code/scrappd-app/scrappd-mobile/scrappd_mobile/.dart_tool/flutter_build/4e900c7f5be68872e70f137ffed31217/native_assets.json: 
