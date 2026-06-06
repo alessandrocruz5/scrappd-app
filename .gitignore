@@ -70,3 +70,7 @@ result2.png
 *credentials*
 !*_test.go
 !*.example
+# Source files whose names legitimately contain these words (e.g. the
+# password-reset auth screens) are code, not secrets — keep them tracked.
+!*.ts
+!*.tsx

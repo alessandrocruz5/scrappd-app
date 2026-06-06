@@ -9,6 +9,7 @@ import { ErrorFallback } from '@/components/error-fallback';
 import { SplashScreen } from '@/components/splash-screen';
 import { queryClient } from '@/lib/query-client';
 import { ErrorBoundary, initSentry, wrapWithSentry } from '@/lib/sentry';
+import { useRecoveryLink } from '@/lib/recovery-link';
 import { useAuthStore } from '@/stores/auth-store';
 import { colors } from '@/theme/colors';
 
@@ -20,20 +21,36 @@ initSentry();
 // state — the React Native equivalent of the Flutter root_screen.dart gate.
 function AuthGate() {
   const status = useAuthStore((s) => s.status);
+  const isPasswordRecovery = useAuthStore((s) => s.isPasswordRecovery);
   const segments = useSegments();
   const router = useRouter();
+
+  // Consume any incoming password-recovery deep link (native + web).
+  useRecoveryLink();
 
   useEffect(() => {
     if (status === 'unknown') return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
+    // A recovery link establishes a real session, so without this the user
+    // would be dropped straight into the app. Pin them on the reset screen
+    // until they pick a new password (which clears the flag).
+    if (isPasswordRecovery) {
+      const onResetScreen =
+        inAuthGroup && (segments as string[]).includes('reset-password');
+      if (!onResetScreen) {
+        router.replace('/(auth)/reset-password');
+      }
+      return;
+    }
+
     if (status === 'unauthenticated' && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (status === 'authenticated' && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [status, segments, router]);
+  }, [status, segments, router, isPasswordRecovery]);
 
   if (status === 'unknown') {
     return <SplashScreen />;
