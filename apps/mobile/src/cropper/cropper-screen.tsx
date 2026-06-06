@@ -5,6 +5,11 @@
 // client-side Skia). The cutout uploads to the private 'cutouts' bucket and an
 // 'items' row is inserted as 'completed' — no AI, no polling. A library pick
 // runs the same pipeline.
+//
+// Web caveat: expo-camera's live capture is limited in browsers, so on web we
+// skip the camera entirely and drive the same shape -> cutout -> upload
+// pipeline from an expo-image-picker file upload. Camera-only UI (the live
+// preview, shutter, and permission gates) is gated behind a Platform check.
 
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -13,6 +18,7 @@ import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -31,6 +37,9 @@ import { type ShapeId } from './shapes';
 import { uploadCutout } from './upload-cutout';
 
 type Phase = 'aim' | 'working' | 'done';
+
+// Live camera capture is a native-only path; web falls back to file upload.
+const isWeb = Platform.OS === 'web';
 
 export function CropperScreen() {
   const { width, height } = useWindowDimensions();
@@ -82,8 +91,8 @@ export function CropperScreen() {
     setPhase('aim');
   }
 
-  // --- Permission gates -----------------------------------------------------
-  if (!permission) {
+  // --- Permission gates (native only; web never touches the camera) ---------
+  if (!isWeb && !permission) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} />
@@ -91,7 +100,7 @@ export function CropperScreen() {
     );
   }
 
-  if (!permission.granted) {
+  if (!isWeb && !permission?.granted) {
     return (
       <SafeAreaView style={styles.center}>
         <Ionicons name="camera-outline" size={56} color={colors.accent} />
@@ -140,7 +149,54 @@ export function CropperScreen() {
     );
   }
 
-  // --- Live aiming ----------------------------------------------------------
+  // --- Web: file upload instead of live camera ------------------------------
+  if (isWeb) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={[styles.viewport, { width: viewport, height: viewport }]}>
+          <View style={[StyleSheet.absoluteFill, styles.webViewport]}>
+            <ShapeOverlay shape={shape} size={viewport} />
+          </View>
+          {phase === 'working' ? (
+            <View style={[StyleSheet.absoluteFill, styles.workingOverlay]}>
+              <ActivityIndicator color={colors.white} size="large" />
+              <Text style={styles.workingText}>Cutting out…</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <ShapePicker
+          selected={shape}
+          onSelect={setShape}
+          disabled={phase === 'working'}
+        />
+
+        {error ? (
+          <View style={styles.errorBox}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={18}
+              color={colors.error}
+            />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.webActions}>
+          <Text style={styles.webHint}>
+            Pick an image and we’ll crop it into the selected shape.
+          </Text>
+          <AppButton
+            label="Choose an image"
+            onPress={handlePickFromLibrary}
+            disabled={phase === 'working'}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // --- Live aiming (native) -------------------------------------------------
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={[styles.viewport, { width: viewport, height: viewport }]}>
@@ -226,6 +282,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.black,
+  },
+  webViewport: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
   },
   workingOverlay: {
     alignItems: 'center',
@@ -323,5 +384,16 @@ const styles = StyleSheet.create({
   actions: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
+  },
+  webActions: {
+    marginTop: 'auto',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  webHint: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });
