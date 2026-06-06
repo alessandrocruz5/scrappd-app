@@ -28,6 +28,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton } from '@/components/ui';
+import { captureHandledError } from '@/lib/sentry';
 import { colors, radius, spacing } from '@/theme/colors';
 
 import { createCutout, type Cutout } from './create-cutout';
@@ -63,6 +64,7 @@ export function CropperScreen() {
       setResult(cutout);
       setPhase('done');
     } catch (err) {
+      captureHandledError(err, { feature: 'cropper.upload', shape });
       setError(err instanceof Error ? err.message : 'Something went wrong.');
       setPhase('aim');
     }
