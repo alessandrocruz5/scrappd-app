@@ -3,28 +3,39 @@
     "name": "Scrappd",
     "slug": "scrappd",
     "scheme": "scrappd",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "backgroundColor": "#F6E8C9",
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.scrappd.app"
+      "bundleIdentifier": "com.scrappd.app",
+      "buildNumber": "1",
+      "icon": "./assets/icon.png"
     },
     "android": {
       "package": "com.scrappd.app",
-      "edgeToEdgeEnabled": true
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#510420"
+      }
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
+          "image": "./assets/splash.png",
+          "imageWidth": 220,
           "backgroundColor": "#510420",
           "resizeMode": "contain"
         }
@@ -52,6 +63,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
     }
   }
 }
