@@ -10,7 +10,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// Optional: Sentry crash reporting. Unset in local dev / Expo Go so the SDK
+// stays dormant; supplied as a build-time var on the web (Vercel) and native
+// (EAS) production builds. When absent, src/lib/sentry.ts is a no-op.
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN || undefined;
+
 export const env = {
   supabaseUrl,
   supabaseAnonKey,
+  sentryDsn,
 } as const;
