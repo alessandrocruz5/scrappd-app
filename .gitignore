@@ -15,6 +15,7 @@ logs/
 *.sqlite
 
 # Test coverage
+coverage/
 coverage.out
 coverage.html
 *.test

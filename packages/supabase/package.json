@@ -9,7 +9,7 @@
     "db:push": "supabase db push",
     "db": "supabase start",
     "gen:types": "supabase gen types typescript --local --schema public,content > ../shared-types/src/database.types.ts",
-    "lint": "echo \"(no lint configured for supabase package)\""
+    "lint": "node scripts/lint-sql.mjs && prettier --check \"functions/**/*.ts\""
   },
   "devDependencies": {
     "supabase": "^2.20.5"
