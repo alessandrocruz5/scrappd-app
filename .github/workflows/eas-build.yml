@@ -4,8 +4,8 @@ name: EAS build & submit
 # Required GitHub Secrets: EXPO_TOKEN, EXPO_PUBLIC_SUPABASE_URL,
 #   EXPO_PUBLIC_SUPABASE_ANON_KEY, EXPO_PUBLIC_SENTRY_DSN,
 #   SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT.
-# For iOS submit: ASC_APP_ID, ASC_API_KEY_ID, ASC_API_KEY_ISSUER_ID,
-#   ASC_API_KEY (base-64 encoded .p8).
+# For iOS submit: ASC_APP_ID, APPLE_TEAM_ID, ASC_API_KEY_ID,
+#   ASC_API_KEY_ISSUER_ID, ASC_API_KEY (base-64 encoded .p8).
 # For Android submit: GOOGLE_SERVICE_ACCOUNT_KEY_JSON.
 
 on:
@@ -26,6 +26,7 @@ on:
         default: preview
         type: choice
         options:
+          - development
           - preview
           - production
       submit:
@@ -76,11 +77,32 @@ jobs:
             --non-interactive \
             --no-wait
 
+      - name: Decode ASC API key
+        if: ${{ inputs.submit == 'true' && (inputs.platform == 'ios' || inputs.platform == 'all') }}
+        env:
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_API_KEY" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
+
+      - name: Decode Google service account key
+        if: ${{ inputs.submit == 'true' && (inputs.platform == 'android' || inputs.platform == 'all') }}
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}
+        run: echo "$GOOGLE_SERVICE_ACCOUNT_KEY_JSON" > /tmp/google-service-account.json
+
       - name: Submit
         if: ${{ inputs.submit == 'true' }}
         working-directory: apps/mobile
+        env:
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPO_APPLE_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          EXPO_APPLE_API_KEY_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
         run: |
           eas submit \
             --platform ${{ inputs.platform }} \
+            --profile production \
             --non-interactive \
             --latest
