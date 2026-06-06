@@ -1,0 +1,89 @@
+// Dynamic config so EAS_PROJECT_ID can be injected as an env var in CI
+// without committing a real project ID (which changes per Expo account).
+// Run `eas init` once locally to register the project; it will print the ID.
+// Then set EAS_PROJECT_ID as a GitHub Actions / EAS secret.
+
+/** @type {import('expo/config').ExpoConfig} */
+module.exports = {
+  expo: {
+    name: 'Scrappd',
+    slug: 'scrappd',
+    scheme: 'scrappd',
+    version: '0.2.0',
+    orientation: 'portrait',
+    userInterfaceStyle: 'light',
+    newArchEnabled: true,
+    backgroundColor: '#F6E8C9',
+    icon: './assets/icon.png',
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: 'com.scrappd.app',
+      buildNumber: '1',
+      icon: './assets/icon.png',
+    },
+    android: {
+      package: 'com.scrappd.app',
+      versionCode: 1,
+      edgeToEdgeEnabled: true,
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#510420',
+      },
+    },
+    web: {
+      bundler: 'metro',
+      output: 'single',
+      favicon: './assets/favicon.png',
+    },
+    plugins: [
+      'expo-router',
+      [
+        '@sentry/react-native/expo',
+        {
+          organization: 'scrappd',
+          project: 'scrappd-mobile',
+        },
+      ],
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/splash.png',
+          imageWidth: 220,
+          backgroundColor: '#510420',
+          resizeMode: 'contain',
+        },
+      ],
+      [
+        'expo-camera',
+        {
+          cameraPermission:
+            'Scrappd uses the camera so you can aim a shape at a pattern or poster and snap an instant cutout.',
+        },
+      ],
+      [
+        'expo-image-picker',
+        {
+          photosPermission:
+            'Scrappd needs access to your photos so you can turn one into a shaped cutout.',
+        },
+      ],
+      [
+        'expo-media-library',
+        {
+          photosPermission:
+            'Scrappd needs access to your photos so it can save your exported pages.',
+          savePhotosPermission: 'Scrappd saves your exported pages to your photo library.',
+          isAccessMediaLocationEnabled: false,
+        },
+      ],
+    ],
+    experiments: {
+      typedRoutes: true,
+    },
+    extra: {
+      eas: {
+        projectId: process.env.EAS_PROJECT_ID ?? '',
+      },
+    },
+  },
+};
