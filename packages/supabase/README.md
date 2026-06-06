@@ -31,6 +31,28 @@ revamp changes (see `REVAMP_PLAN.md`, Phase 1):
 - **Storage** — private buckets `cutouts` and `exports` with per-user RLS
   (objects are namespaced under `<bucket>/<auth.uid()>/...`).
 
+## Environments
+
+- **Local (dev):** the Docker stack started with `pnpm db:start`. `config.toml`
+  configures it.
+- **Live (hosted):** a single hosted Supabase project, `gujldqovvhjbctzelark`
+  (`https://gujldqovvhjbctzelark.supabase.co`), is the live backend. A dedicated
+  dev/prod split is deferred (free-tier active-project cap) — see the migration
+  plan. The mobile app points at it via `apps/mobile/.env` (and Vercel/EAS build
+  env for the published builds).
+
+Current state of the hosted project (verified):
+
+- All 4 migrations applied (`content` schema, `profiles` + signup trigger, RLS,
+  storage buckets). **Do not re-apply** — diff against `migrations/` before any
+  `db push`.
+- Private `cutouts` and `exports` buckets exist with per-user RLS.
+- The `remove-background` edge function is deployed (dormant: 403 free /
+  501 premium).
+- Production Auth (Site URL, redirect URLs, SMTP, `enable_confirmations`) still
+  needs to be set in the dashboard / pushed — see the production notes in
+  `config.toml`. These cannot be committed (SMTP password is a secret).
+
 ## Verifying RLS
 
 With the local stack running, run the two-user RLS checks:
