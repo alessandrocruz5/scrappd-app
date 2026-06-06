@@ -14,6 +14,13 @@ type AuthState = {
   user: User | null;
   isSubmitting: boolean;
   errorMessage: string | null;
+  /**
+   * True while the user is in the middle of a password-recovery flow: the
+   * recovery link has established a temporary session, but the user has not
+   * yet chosen a new password. The AuthGate uses this to pin them on the
+   * reset screen instead of dropping them into the tab shell.
+   */
+  isPasswordRecovery: boolean;
 
   /**
    * Hydrate from any persisted session and subscribe to future auth changes.
@@ -29,6 +36,17 @@ type AuthState = {
   ) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<AuthResult>;
+  /**
+   * Exchange the access/refresh tokens carried by a recovery deep link for a
+   * temporary session, then flag the recovery flow so the user lands on the
+   * reset screen.
+   */
+  beginPasswordRecovery: (
+    accessToken: string,
+    refreshToken: string,
+  ) => Promise<AuthResult>;
+  /** Set the new password and exit the recovery flow. */
+  updatePassword: (password: string) => Promise<AuthResult>;
   clearError: () => void;
 };
 
@@ -60,6 +78,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isSubmitting: false,
   errorMessage: null,
+  isPasswordRecovery: false,
 
   initialize: () => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -71,12 +90,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        set({
+      (event, session) => {
+        set((state) => ({
           session,
           user: session?.user ?? null,
           status: session ? 'authenticated' : 'unauthenticated',
-        });
+          // Supabase emits PASSWORD_RECOVERY when it detects a recovery link in
+          // the URL (web). On native we set the flag ourselves from the deep
+          // link, so preserve it here and only clear it on sign-out.
+          isPasswordRecovery:
+            event === 'PASSWORD_RECOVERY'
+              ? true
+              : event === 'SIGNED_OUT'
+                ? false
+                : state.isPasswordRecovery,
+        }));
       },
     );
 
@@ -157,6 +185,44 @@ export const useAuthStore = create<AuthState>((set) => ({
       message:
         'If an account exists for that email, a reset link is on its way.',
     };
+  },
+
+  beginPasswordRecovery: async (accessToken, refreshToken) => {
+    set({ errorMessage: null });
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) {
+      const message = friendlyAuthError(
+        error.message,
+        'This reset link is invalid or has expired. Request a new one.',
+      );
+      set({ errorMessage: message });
+      return { ok: false, message };
+    }
+    // setSession emits SIGNED_IN (not PASSWORD_RECOVERY), so flag the flow here
+    // to keep the AuthGate pinned on the reset screen.
+    set({ isPasswordRecovery: true });
+    return { ok: true };
+  },
+
+  updatePassword: async (password) => {
+    set({ isSubmitting: true, errorMessage: null });
+    const { error } = await supabase.auth.updateUser({ password });
+    set({ isSubmitting: false });
+    if (error) {
+      const message = friendlyAuthError(
+        error.message,
+        'Could not update your password. Please try again.',
+      );
+      set({ errorMessage: message });
+      return { ok: false, message };
+    }
+    // Recovery complete — clearing the flag lets the AuthGate route the now
+    // fully-authenticated user into the app.
+    set({ isPasswordRecovery: false });
+    return { ok: true };
   },
 
   clearError: () => set({ errorMessage: null }),
