@@ -34,6 +34,7 @@ import { colors, radius, spacing } from '@/theme/colors';
 
 import { CanvasItem } from './canvas-item';
 import { exportPageView } from './export-page';
+import { bringToFrontZ, sendToBackZ } from './transform';
 import { ItemToolbar } from './item-toolbar';
 import { PageBackground } from './page-background';
 import {
@@ -107,16 +108,16 @@ export function PageEditor({ pageId }: { pageId: string }) {
 
   function bringToFront() {
     if (!selected || !pageItems) return;
-    const max = Math.max(...pageItems.map((pi) => pi.z_index));
-    if (selected.z_index === max) return;
-    updateItem.mutate({ id: selected.id, patch: { z_index: max + 1 } });
+    const z = bringToFrontZ(pageItems, selected);
+    if (z === null) return;
+    updateItem.mutate({ id: selected.id, patch: { z_index: z } });
   }
 
   function sendToBack() {
     if (!selected || !pageItems) return;
-    const min = Math.min(...pageItems.map((pi) => pi.z_index));
-    if (selected.z_index === min) return;
-    updateItem.mutate({ id: selected.id, patch: { z_index: min - 1 } });
+    const z = sendToBackZ(pageItems, selected);
+    if (z === null) return;
+    updateItem.mutate({ id: selected.id, patch: { z_index: z } });
   }
 
   function changeOpacity(next: number) {
