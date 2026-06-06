@@ -2,11 +2,7 @@
 // declarative: read with the query hooks, mutate with the mutation hooks, and
 // let invalidation keep the lists fresh after a change.
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   addItemToPage,

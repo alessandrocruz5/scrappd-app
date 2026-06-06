@@ -26,7 +26,9 @@ export default function LoginScreen() {
   const onSubmit = async () => {
     setLocalError(null);
     if (!email.trim() || password.length < 8) {
-      setLocalError('Enter your email and a password of at least 8 characters.');
+      setLocalError(
+        'Enter your email and a password of at least 8 characters.',
+      );
       return;
     }
     const result = await signIn(email, password);
@@ -80,7 +82,11 @@ export default function LoginScreen() {
 
             {localError ? <FormError message={localError} /> : null}
 
-            <AppButton label="Log in" onPress={onSubmit} loading={isSubmitting} />
+            <AppButton
+              label="Log in"
+              onPress={onSubmit}
+              loading={isSubmitting}
+            />
           </View>
 
           <View style={styles.footer}>

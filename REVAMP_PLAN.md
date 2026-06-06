@@ -40,9 +40,10 @@ No custom API server. Expo talks to Supabase directly; RLS enforces per-user own
 
 Run these as **7 milestone prompts**, each in its own session, each ending in a commit/push to `claude/great-cori-H5Xqp`. Granularity is deliberately milestone-sized (PR-sized), not micro: fewer context reloads, every step independently verifiable. Run them in order — each assumes the previous is committed. Copy a prompt verbatim into a fresh session.
 
-> **Shared preamble** (true for every prompt): *Repo `scrappd-app`, branch `claude/great-cori-H5Xqp`. Monorepo with Expo app in `apps/mobile`, Python ML in `apps/ml-service`, Supabase project in `packages/supabase`, shared TS in `packages/shared-types`. Stack: Expo + Supabase (Auth/Postgres+RLS/Storage) + dormant Python FastAPI ML. AI is paused; cropping and page export are client-side (Skia). Work on the branch, then commit and push.*
+> **Shared preamble** (true for every prompt): _Repo `scrappd-app`, branch `claude/great-cori-H5Xqp`. Monorepo with Expo app in `apps/mobile`, Python ML in `apps/ml-service`, Supabase project in `packages/supabase`, shared TS in `packages/shared-types`. Stack: Expo + Supabase (Auth/Postgres+RLS/Storage) + dormant Python FastAPI ML. AI is paused; cropping and page export are client-side (Skia). Work on the branch, then commit and push._
 
 ### Prompt 1 — Monorepo scaffold (no behavior change)
+
 ```
 Convert scrappd-app into a pnpm + Turborepo monorepo on branch claude/great-cori-H5Xqp.
 - Add root package.json (packageManager: pnpm), pnpm-workspace.yaml (apps/*, packages/*), turbo.json with build/dev/lint/typecheck/db tasks.
@@ -54,6 +55,7 @@ Verify: pnpm install resolves; turbo runs; ml-service boots. Commit and push.
 ```
 
 ### Prompt 2 — Supabase schema, RLS, and Project→Book rename
+
 ```
 In packages/supabase, build the database from the existing Go Postgres schema (backend/migrations/*.sql) with these changes, on branch claude/great-cori-H5Xqp:
 - Rename content.projects -> content.books, and content.pages.project_id -> book_id (plus indexes/FKs).
@@ -65,6 +67,7 @@ Verify: migrations apply cleanly; with two test users, RLS blocks cross-user acc
 ```
 
 ### Prompt 3 — Expo app bootstrap: client, auth, navigation shell
+
 ```
 Create the Expo (TypeScript) app in apps/mobile, replacing the Flutter app, on branch claude/great-cori-H5Xqp.
 - Scaffold Expo + expo-router. Add @supabase/supabase-js, @tanstack/react-query, zustand, @react-native-async-storage/async-storage.
@@ -75,6 +78,7 @@ Verify: `pnpm --filter mobile dev`, sign up/in against local Supabase on Expo Go
 ```
 
 ### Prompt 4 — Instant shape cropper (the centerpiece)
+
 ```
 Build the instant shape cropper in apps/mobile on branch claude/great-cori-H5Xqp.
 - Add @shopify/react-native-skia, expo-camera, expo-image-picker.
@@ -85,6 +89,7 @@ Verify: on iPhone via Expo Go, each shape produces a clean transparent PNG cutou
 ```
 
 ### Prompt 5 — Books and pages (list + CRUD)
+
 ```
 Implement Books and Pages in apps/mobile on branch claude/great-cori-H5Xqp.
 - Books tab: list user's books, create/rename/delete a book (supabase.from('books') under RLS); open a book to a grid of its pages. Port behavior from the Flutter ProjectsProvider.
@@ -94,6 +99,7 @@ Verify: create a book, add pages, see them persist and reload under RLS. Commit 
 ```
 
 ### Prompt 6 — Page editor canvas
+
 ```
 Build the Skia page editor in apps/mobile on branch claude/great-cori-H5Xqp, porting page_editor_screen.dart.
 - Canvas rendering page_items with drag (move), pinch (resize), rotate; z-index ordering; opacity; page background color/image/pattern; layout templates.
@@ -102,6 +108,7 @@ Verify: place several cutouts, move/resize/rotate, reload, transforms persisted.
 ```
 
 ### Prompt 7 — Client-side export, retire Flutter, ML premium placeholder
+
 ```
 Finish the revamp on branch claude/great-cori-H5Xqp.
 - Client-side export: snapshot the page Skia canvas to a high-res PNG; save via expo-media-library and share via expo-sharing (port page_export_service.dart intent). No server render endpoint.
@@ -110,7 +117,7 @@ Finish the revamp on branch claude/great-cori-H5Xqp.
 Verify: export a page to the photo library and share sheet on iPhone; repo builds with Go/Flutter removed; edge function placeholder rejects non-pro users. Commit and push.
 ```
 
-**Ordering notes:** Prompt 2 must land before 3 (the app needs the schema + generated types); 4–6 build on 3. Don't parallelize *across* prompts; do parallelize *within* a session. Prompts 3, 4, 6, 7 need on-device iPhone testing (Expo Go + dev server reachable) — run those locally, not in the remote container. Prompts 3–4 need a Supabase URL + anon key (local `supabase start` or a hosted project).
+**Ordering notes:** Prompt 2 must land before 3 (the app needs the schema + generated types); 4–6 build on 3. Don't parallelize _across_ prompts; do parallelize _within_ a session. Prompts 3, 4, 6, 7 need on-device iPhone testing (Expo Go + dev server reachable) — run those locally, not in the remote container. Prompts 3–4 need a Supabase URL + anon key (local `supabase start` or a hosted project).
 
 ---
 

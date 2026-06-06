@@ -1,0 +1,22 @@
+# Dependencies & build output
+node_modules/
+dist/
+build/
+.expo/
+.turbo/
+coverage/
+
+# Lockfile (managed by pnpm)
+pnpm-lock.yaml
+
+# Generated Supabase types — overwritten by `pnpm gen:types`
+packages/shared-types/src/database.types.ts
+
+# Python (formatted by its own tooling)
+apps/ml-service/
+scrappd-ml-experiments/
+
+# Binary / large artifacts
+*.png
+*.jpg
+*.jpeg

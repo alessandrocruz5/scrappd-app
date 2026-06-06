@@ -11,11 +11,15 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test --filter=!@scrappd/ml-service",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "db:start": "pnpm --filter @scrappd/supabase run db:start",
     "db:push": "pnpm --filter @scrappd/supabase run db:push",
     "gen:types": "pnpm --filter @scrappd/supabase run gen:types"
   },
   "devDependencies": {
+    "prettier": "^3.4.2",
     "turbo": "^2.5.4"
   }
 }

@@ -13,5 +13,5 @@ export type {
   TablesUpdate,
   Enums,
   CompositeTypes,
-} from "./database.types.js";
-export { Constants } from "./database.types.js";
+} from './database.types.js';
+export { Constants } from './database.types.js';

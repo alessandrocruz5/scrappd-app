@@ -13,7 +13,11 @@ type ShapePickerProps = {
   disabled?: boolean;
 };
 
-export function ShapePicker({ selected, onSelect, disabled }: ShapePickerProps) {
+export function ShapePicker({
+  selected,
+  onSelect,
+  disabled,
+}: ShapePickerProps) {
   return (
     <ScrollView
       horizontal

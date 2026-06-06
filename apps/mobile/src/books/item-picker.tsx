@@ -71,7 +71,9 @@ export function ItemPicker({
                 onPress={() => onPick(item.id)}
               >
                 <CutoutThumb
-                  storageKey={item.processed_image_key ?? item.original_image_key}
+                  storageKey={
+                    item.processed_image_key ?? item.original_image_key
+                  }
                   style={styles.thumb}
                 />
                 {item.item_name ? (
