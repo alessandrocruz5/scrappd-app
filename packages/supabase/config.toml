@@ -81,7 +81,9 @@ site_url = "http://127.0.0.1:3000"
 # e.g. "https://scrappd.vercel.app" and "https://scrappd.vercel.app/reset".
 additional_redirect_urls = [
   "http://127.0.0.1:3000",
+  "http://127.0.0.1:3000/**",
   "https://127.0.0.1:3000",
+  "https://127.0.0.1:3000/**",
   "scrappd://",
   "scrappd://**",
 ]
