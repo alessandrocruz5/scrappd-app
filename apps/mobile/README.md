@@ -35,7 +35,7 @@ if the required Supabase pair is missing:
 | Variable                        | Required | Purpose                                          |
 | ------------------------------- | -------- | ------------------------------------------------ |
 | `EXPO_PUBLIC_SUPABASE_URL`      | yes      | Supabase project API URL                         |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | yes      | Supabase anon/publishable key (RLS-safe)         |
+| `EXPO_PUBLIC_SUPABASE_KEY`      | yes      | Supabase anon/publishable key (RLS-safe)         |
 | `EXPO_PUBLIC_SENTRY_DSN`        | no       | Sentry DSN; enables crash reporting when present |
 
 Source maps for production builds also use three **secret**, build-time-only

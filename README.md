@@ -90,7 +90,7 @@ Two GitHub Actions workflows run against this repository.
 | Secret | Description |
 |---|---|
 | `EXPO_PUBLIC_SUPABASE_URL` | Hosted Supabase project URL (`https://<ref>.supabase.co`) |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable anon key |
+| `EXPO_PUBLIC_SUPABASE_KEY` | Supabase publishable anon key |
 | `EXPO_PUBLIC_SENTRY_DSN` | Sentry DSN for error reporting |
 | `VERCEL_TOKEN` | Vercel personal-access or team token |
 | `VERCEL_ORG_ID` | Vercel team/org ID (from Vercel project settings) |

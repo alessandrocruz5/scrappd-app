@@ -34,7 +34,7 @@ dashboard (or via `vercel link`) and pointed at this repo:
    | Variable                        | Value                                          |
    | ------------------------------- | ---------------------------------------------- |
    | `EXPO_PUBLIC_SUPABASE_URL`      | `https://gujldqovvhjbctzelark.supabase.co`     |
-   | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | the project's anon / `sb_publishable_…` key    |
+   | `EXPO_PUBLIC_SUPABASE_KEY`      | the project's anon / `sb_publishable_…` key    |
 
    The anon key is safe to expose in the client bundle — Row Level Security, not
    key secrecy, protects the data. (When P5/Sentry lands, also add
@@ -71,7 +71,7 @@ Build locally exactly as Vercel will:
 ```bash
 pnpm install --frozen-lockfile
 EXPO_PUBLIC_SUPABASE_URL=https://gujldqovvhjbctzelark.supabase.co \
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon-key> \
+EXPO_PUBLIC_SUPABASE_KEY=<anon-key> \
   pnpm --filter mobile exec expo export --platform web
 # serve the static output to smoke-test SPA routing:
 npx serve apps/mobile/dist -s
