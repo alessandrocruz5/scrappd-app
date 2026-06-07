@@ -5,7 +5,7 @@
 // Supabase client, the Sentry wrapper) would otherwise crash the suite in CI,
 // where these aren't set. Dummy values are fine — no test hits a real backend.
 process.env.EXPO_PUBLIC_SUPABASE_URL ||= 'http://127.0.0.1:54321';
-process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||= 'test-anon-key';
+process.env.EXPO_PUBLIC_SUPABASE_KEY ||= 'test-anon-key';
 
 // Stub the Supabase client so importing a store (or anything down its import
 // chain) doesn't boot the real client.
