@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter mobile exec expo export --platform web",
+  "outputDirectory": "apps/mobile/dist",
+  "framework": null,
+  "github": {
+    "silent": true
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

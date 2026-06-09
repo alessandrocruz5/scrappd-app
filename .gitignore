@@ -15,6 +15,7 @@ logs/
 *.sqlite
 
 # Test coverage
+coverage/
 coverage.out
 coverage.html
 *.test
@@ -73,3 +74,7 @@ result2.png
 
 # Claude
 .claude/
+# Source files whose names legitimately contain these words (e.g. the
+# password-reset auth screens) are code, not secrets — keep them tracked.
+!*.ts
+!*.tsx

@@ -20,3 +20,6 @@ scrappd-ml-experiments/
 *.png
 *.jpg
 *.jpeg
+
+# Narrative planning docs — kept as authored, not auto-formatted
+docs/

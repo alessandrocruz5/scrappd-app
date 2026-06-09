@@ -62,11 +62,31 @@ file_size_limit = "50MiB"
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for
-# constructing URLs used in emails.
+# constructing the links inside auth emails (confirmation, password reset).
+#
+# The value below is the LOCAL default (Expo web dev server). It also drives the
+# links inside locally-sent (inbucket) auth emails.
+#
+# PRODUCTION (hosted project gujldqovvhjbctzelark): set this to the live web
+# domain in the Supabase Dashboard -> Authentication -> URL Configuration once
+# the web app is deployed (see P7), e.g.:
+#   site_url = "https://scrappd.vercel.app"   # <-- replace with the real domain
 site_url = "http://127.0.0.1:3000"
-# A list of *exact* URLs that auth providers are permitted to redirect to
-# post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# Exact URLs (wildcards allowed) that auth may redirect to, and the deep-link
+# targets permitted in confirmation / password-reset emails. Includes the
+# localhost dev origins and the `scrappd://` native app scheme (e.g. the
+# password-reset callback added in P4).
+#
+# PRODUCTION: also add the live web domain + its reset route in the dashboard,
+# e.g. "https://scrappd.vercel.app" and "https://scrappd.vercel.app/reset".
+additional_redirect_urls = [
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3000/**",
+  "https://127.0.0.1:3000",
+  "https://127.0.0.1:3000/**",
+  "scrappd://",
+  "scrappd://**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -85,7 +105,38 @@ enable_signup = true
 # confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
+#
+# DECISION: kept FALSE locally (the inbucket dev mailbox makes confirm links a
+# chore), so sign-up signs the user straight in — see apps/mobile "Auth flow".
+# In PRODUCTION this is ENABLED (= true) so a real, reachable email is required
+# before first sign-in; this guards against junk/typo signups and depends on the
+# SMTP provider below being configured. The app already handles both modes: when
+# confirmations are on, sign-up shows a "check your email" notice instead of
+# routing into the app. Set to true under Authentication -> Providers -> Email
+# on the hosted project (or via `supabase config push` with the prod env).
 enable_confirmations = false
+
+# ----------------------------------------------------------------------------
+# Transactional email (password reset, confirmation).
+#
+# LOCAL: left disabled — the local stack captures outgoing mail in inbucket
+# (see [inbucket] above) so no real SMTP is needed for development.
+#
+# PRODUCTION: a real SMTP sender is REQUIRED, otherwise password-reset and
+# confirmation emails silently never arrive. Wire a provider (e.g. Resend,
+# SendGrid, Amazon SES) in the Supabase Dashboard -> Authentication -> Emails ->
+# SMTP Settings, OR push this block with `supabase config push` after exporting:
+#   SUPABASE_SMTP_HOST, SUPABASE_SMTP_PORT, SUPABASE_SMTP_USER,
+#   SUPABASE_SMTP_PASS, SUPABASE_SMTP_ADMIN_EMAIL, SUPABASE_SMTP_SENDER_NAME
+# Keep the password OUT of git — supply it via the environment only.
+# [auth.email.smtp]
+# enabled = true
+# host = "env(SUPABASE_SMTP_HOST)"
+# port = 587
+# user = "env(SUPABASE_SMTP_USER)"
+# pass = "env(SUPABASE_SMTP_PASS)"
+# admin_email = "env(SUPABASE_SMTP_ADMIN_EMAIL)"
+# sender_name = "env(SUPABASE_SMTP_SENDER_NAME)"
 
 # Use an external OAuth provider. The full list of providers are:
 # `apple`, `azure`, `bitbucket`, `discord`, `facebook`, `github`, `gitlab`,

@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --noEmit",
-    "lint": "echo \"(no lint configured for shared-types yet)\""
+    "lint": "prettier --check \"src/**/*.ts\""
   },
   "devDependencies": {
     "typescript": "^5.5.4"

@@ -79,6 +79,37 @@ for the dormant ML service.
 | `pnpm db:push`   | Apply migrations to the linked Supabase project      |
 | `pnpm gen:types` | Regenerate `packages/shared-types` from the database |
 
+## CI/CD
+
+Two GitHub Actions workflows run against this repository.
+
+**`ci.yml`** — runs on every push and PR: lint, typecheck, unit tests (+ coverage artifact), Prettier check, Expo web export, ML byte-compile. All jobs must pass before a PR can be merged.
+
+**`deploy-web.yml`** — runs on every push to `main`: exports the Expo web bundle and deploys it to Vercel as a production deployment. Requires these GitHub Secrets (set under **Settings → Secrets and variables → Actions**):
+
+| Secret | Description |
+|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | Hosted Supabase project URL (`https://<ref>.supabase.co`) |
+| `EXPO_PUBLIC_SUPABASE_KEY` | Supabase publishable anon key |
+| `EXPO_PUBLIC_SENTRY_DSN` | Sentry DSN for error reporting |
+| `VERCEL_TOKEN` | Vercel personal-access or team token |
+| `VERCEL_ORG_ID` | Vercel team/org ID (from Vercel project settings) |
+| `VERCEL_PROJECT_ID` | Vercel project ID (from Vercel project settings) |
+
+**`eas-build.yml`** — manually triggered (`workflow_dispatch`): builds native iOS/Android binaries via EAS and optionally submits them to the app stores. Gate this behind the `production` GitHub environment for approval. Additional secrets needed when this is activated (P8/P9):
+
+| Secret | Description |
+|---|---|
+| `EXPO_TOKEN` | Expo access token for EAS |
+| `SENTRY_AUTH_TOKEN` | Sentry auth token for source-map upload |
+| `SENTRY_ORG` | Sentry organisation slug |
+| `SENTRY_PROJECT` | Sentry project slug |
+| `ASC_APP_ID` | Apple App Store Connect app ID (iOS submit) |
+| `ASC_API_KEY_ID` | App Store Connect API key ID |
+| `ASC_API_KEY_ISSUER_ID` | App Store Connect API key issuer ID |
+| `ASC_API_KEY` | Base-64 encoded `.p8` private key |
+| `GOOGLE_SERVICE_ACCOUNT_KEY_JSON` | Google Play service-account JSON (Android submit) |
+
 ## Dormant ML service
 
 The Python service is **not** part of normal development. To run it locally for

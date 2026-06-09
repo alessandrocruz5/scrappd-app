@@ -17,6 +17,7 @@ import Animated, {
 import type { PageItemPatch, PageItemWithItem } from '@/books/api';
 import { colors, radius } from '@/theme/colors';
 
+import { roundTransform } from './transform';
 import { useSignedUrl } from './use-signed-url';
 
 const MIN_SIZE = 60;
@@ -85,13 +86,15 @@ export function CanvasItem({
   const maxSize = Math.max(canvasWidth, canvasHeight);
 
   function commit() {
-    onCommit({
-      position_x: Math.round(tx.value),
-      position_y: Math.round(ty.value),
-      width: Math.round(w.value),
-      height: Math.round(h.value),
-      rotation: Math.round(rot.value * 100) / 100,
-    });
+    onCommit(
+      roundTransform({
+        x: tx.value,
+        y: ty.value,
+        width: w.value,
+        height: h.value,
+        rotation: rot.value,
+      }),
+    );
   }
 
   const pan = Gesture.Pan()
