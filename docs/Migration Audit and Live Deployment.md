@@ -34,7 +34,7 @@ Scrappd was migrated from a **Flutter + Go (REST) + Python ML** stack to an **Ex
 | Variable | Where | Status | Notes |
 |---|---|---|---|
 | `EXPO_PUBLIC_SUPABASE_URL` | mobile build + Vercel build | needs prod value | hosted project URL |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | mobile build + Vercel build | needs prod value | publishable/anon key |
+| `EXPO_PUBLIC_SUPABASE_KEY` | mobile build + Vercel build | needs prod value | publishable/anon key |
 | `EXPO_PUBLIC_SENTRY_DSN` | mobile build + Vercel build | **new** | added in Sentry prompt |
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` | edge function | auto-injected | already used by `remove-background` |
 | `ML_SERVICE_URL` | edge function | future (dormant) | only when premium ships |
@@ -64,7 +64,7 @@ Verify: from a throwaway script or the app against the hosted URL, sign up a use
 ### P2 — Deploy Expo web to Vercel *(first live URL; depends on P1)*
 ```
 Ship the Expo web build to Vercel as the first live Scrappd surface.
-- Configure the Expo web export for static hosting and create the Vercel project (use the Vercel MCP tools). Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY (and EXPO_PUBLIC_SENTRY_DSN if P5 has landed) as Vercel build-time env vars. Add a vercel.json / build config that runs `pnpm --filter mobile exec expo export --platform web` and serves the static output with SPA routing fallback.
+- Configure the Expo web export for static hosting and create the Vercel project (use the Vercel MCP tools). Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY (and EXPO_PUBLIC_SENTRY_DSN if P5 has landed) as Vercel build-time env vars. Add a vercel.json / build config that runs `pnpm --filter mobile exec expo export --platform web` and serves the static output with SPA routing fallback.
 - IMPORTANT web caveat: the cropper depends on expo-camera, which is limited on web. Make the cropper gracefully fall back to expo-image-picker (file upload) when running on web so the core crop→upload flow works in a browser. Gate any camera-only UI behind Platform checks.
 - Set the hosted Supabase Site URL / redirect URLs to the deployed Vercel domain.
 Verify: open the Vercel URL, sign up/in, run a crop (via image picker on web), create a book/page, place an item, export. Confirm session persists across reload.

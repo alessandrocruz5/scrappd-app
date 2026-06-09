@@ -70,3 +70,6 @@ result2.png
 *credentials*
 !*_test.go
 !*.example
+
+# Claude
+.claude/
